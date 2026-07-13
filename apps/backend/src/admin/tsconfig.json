@@ -20,8 +20,5 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": [
-    ".",
-    "../../.medusa/types/plugin-augmentations.d.ts"
-  ]
+  "include": [".", "../../.medusa/types/plugin-augmentations.d.ts"]
 }
