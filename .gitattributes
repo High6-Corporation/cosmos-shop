@@ -1,0 +1,19 @@
+# Client-owned paths — template pull never overwrites local changes.
+# merge=ours means git always keeps the client's version during a merge
+# from the template upstream. See TEMPLATE_BOUNDARY.md for the full boundary
+# definition and TEMPLATE_SYNC.md for the pull procedure.
+
+# Role definitions — clients edit these freely
+apps/backend/src/utils/seed-rbac-roles.ts merge=ours
+
+# Client-specific widgets
+apps/backend/src/admin/widgets/marketplace-order-metadata.tsx merge=ours
+apps/backend/src/admin/widgets/user-detail-roles.tsx merge=ours
+apps/backend/src/admin/widgets/user-list-roles.tsx merge=ours
+
+# Translations — diverge per client
+apps/backend/src/admin/i18n/index.ts merge=ours
+
+# Environment — never overwrite
+apps/backend/.env merge=ours
+apps/backend/.env.example merge=ours

@@ -18,5 +18,9 @@ module.exports = defineConfig({
       key: Modules.RBAC,
       resolve: "@medusajs/rbac",
     },
+    {
+      key: "rbacSeed",
+      resolve: "./src/modules/rbac-seed",
+    },
   ],
 });

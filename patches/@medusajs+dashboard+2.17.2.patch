@@ -40,7 +40,7 @@ index 1bfa154..30bd040 100644
      [isRbacEnabled, permissionsMap]
    );
 diff --git a/node_modules/@medusajs/dashboard/dist/role-detail-C65BMGLE.mjs b/node_modules/@medusajs/dashboard/dist/role-detail-C65BMGLE.mjs
-index 483215c..56934a1 100644
+index 483215c..2c94348 100644
 --- a/node_modules/@medusajs/dashboard/dist/role-detail-C65BMGLE.mjs
 +++ b/node_modules/@medusajs/dashboard/dist/role-detail-C65BMGLE.mjs
 @@ -317,7 +317,7 @@ var RoleUsersSection = ({ role }) => {
@@ -48,7 +48,7 @@ index 483215c..56934a1 100644
            {
              action: handleRemove,
 -            label: t("actions.remove"),
-+            disabled: users.length === role.users_link?.length, label: t("actions.remove"),
++            disabled: (users ?? []).length === role.users_link?.length, label: t("actions.remove"),
              shortcut: "r"
            }
          ] : void 0,
@@ -57,7 +57,7 @@ index 483215c..56934a1 100644
              {
                icon: /* @__PURE__ */ jsx3(Trash2, {}),
 -              label: t("actions.remove"),
-+              disabled: users.length === role.users_link?.length, label: t("actions.remove"),
++              label: t("actions.remove"),
                onClick: handleRemove
              }
            ]
