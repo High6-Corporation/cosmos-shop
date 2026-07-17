@@ -94,3 +94,11 @@ indicates the subscriber wrapper was stripped (the bug that caused #87).
 
 If dashboard patches (invite button, permissions wildcard) don't take effect after a restart,
 clear the Vite deps cache: `rm -rf apps/backend/node_modules/.vite/deps/`
+
+### package.json `name` field
+
+`package.json` is template-owned (dependencies, scripts, workspace config), but its `name`
+field is client-specific. Template merges may show a conflict on this single line. Resolution:
+**keep Cosmos Shop's `name`, accept the template's side for everything else in the file.** Do
+not add `package.json` to `.gitattributes` `merge=ours` — that would block legitimate template
+dependency and script updates from reaching the client repo.
