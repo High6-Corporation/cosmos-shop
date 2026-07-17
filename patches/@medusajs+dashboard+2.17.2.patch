@@ -1,0 +1,102 @@
+diff --git a/node_modules/@medusajs/dashboard/dist/chunk-7PPGSSJH.mjs b/node_modules/@medusajs/dashboard/dist/chunk-7PPGSSJH.mjs
+index fb6c6d3..3f5bfdb 100644
+--- a/node_modules/@medusajs/dashboard/dist/chunk-7PPGSSJH.mjs
++++ b/node_modules/@medusajs/dashboard/dist/chunk-7PPGSSJH.mjs
+@@ -103903,8 +103903,13 @@ var ProtectedRoute = () => {
+     if (!permissionsResponse) {
+       return null;
+     }
++    // Handle both data shapes: flat array (sidebar widget's cached query)
++    // and { permissions: [...] } (route guard's own query response).
++    const perms = Array.isArray(permissionsResponse)
++      ? permissionsResponse
++      : permissionsResponse.permissions;
+     return {
+-      permissions: permissionsResponse.permissions
++      permissions: perms ?? []
+     };
+   }, [permissionsResponse]);
+   if (isLoadingUser) {
+diff --git a/node_modules/@medusajs/dashboard/dist/chunk-HFX2KPQD.mjs b/node_modules/@medusajs/dashboard/dist/chunk-HFX2KPQD.mjs
+index 1bfa154..30bd040 100644
+--- a/node_modules/@medusajs/dashboard/dist/chunk-HFX2KPQD.mjs
++++ b/node_modules/@medusajs/dashboard/dist/chunk-HFX2KPQD.mjs
+@@ -136,7 +136,7 @@ var PermissionsProvider = ({
+       if (!isRbacEnabled) {
+         return true;
+       }
+-      return !!permissionsMap[permission];
++      return !!permissionsMap[permission] || !!permissionsMap["*:*"];
+     },
+     [isRbacEnabled, permissionsMap]
+   );
+@@ -169,7 +169,7 @@ var PermissionsProvider = ({
+       if (!isRbacEnabled) {
+         return true;
+       }
+-      return !!permissionsMap[buildPermission(resource, operation)];
++      return !!permissionsMap[buildPermission(resource, operation)] || !!permissionsMap["*:*"];
+     },
+     [isRbacEnabled, permissionsMap]
+   );
+diff --git a/node_modules/@medusajs/dashboard/dist/role-detail-C65BMGLE.mjs b/node_modules/@medusajs/dashboard/dist/role-detail-C65BMGLE.mjs
+index 483215c..56934a1 100644
+--- a/node_modules/@medusajs/dashboard/dist/role-detail-C65BMGLE.mjs
++++ b/node_modules/@medusajs/dashboard/dist/role-detail-C65BMGLE.mjs
+@@ -317,7 +317,7 @@ var RoleUsersSection = ({ role }) => {
+         commands: isRoleAssignable ? [
+           {
+             action: handleRemove,
+-            label: t("actions.remove"),
++            disabled: users.length === role.users_link?.length, label: t("actions.remove"),
+             shortcut: "r"
+           }
+         ] : void 0,
+@@ -364,7 +364,7 @@ var RoleUserActions = ({
+           actions: [
+             {
+               icon: /* @__PURE__ */ jsx3(Trash2, {}),
+-              label: t("actions.remove"),
++              disabled: users.length === role.users_link?.length, label: t("actions.remove"),
+               onClick: handleRemove
+             }
+           ]
+diff --git a/node_modules/@medusajs/dashboard/dist/user-invite-QUU4SWDI.mjs b/node_modules/@medusajs/dashboard/dist/user-invite-QUU4SWDI.mjs
+index 9354ca8..2317789 100644
+--- a/node_modules/@medusajs/dashboard/dist/user-invite-QUU4SWDI.mjs
++++ b/node_modules/@medusajs/dashboard/dist/user-invite-QUU4SWDI.mjs
+@@ -254,7 +254,7 @@ var InviteUserForm = () => {
+                 variant: "secondary",
+                 type: "submit",
+                 isLoading: isPending,
+-                children: t("users.sendInvite")
++                disabled: showRbacRolesField && !form.watch("roles")?.length, children: t("users.sendInvite")
+               }
+             ) })
+           ] }),
+diff --git a/node_modules/@medusajs/dashboard/src/routes/orders/order-create-fulfillment/components/order-create-fulfillment-form/order-create-fulfillment-form.tsx b/node_modules/@medusajs/dashboard/src/routes/orders/order-create-fulfillment/components/order-create-fulfillment-form/order-create-fulfillment-form.tsx
+index 160feab..a6a1ff7 100644
+--- a/node_modules/@medusajs/dashboard/src/routes/orders/order-create-fulfillment/components/order-create-fulfillment-form/order-create-fulfillment-form.tsx
++++ b/node_modules/@medusajs/dashboard/src/routes/orders/order-create-fulfillment/components/order-create-fulfillment-form/order-create-fulfillment-form.tsx
+@@ -304,11 +304,17 @@ export function OrderCreateFulfillmentForm({
+                                     )}
+                                   </Select.Trigger>
+                                   <Select.Content>
+-                                    {shipping_options.map((o) => (
+-                                      <Select.Item key={o.id} value={o.id}>
+-                                        {o.name}
++                                    {shipping_options.length > 0 ? (
++                                      shipping_options.map((o) => (
++                                        <Select.Item key={o.id} value={o.id}>
++                                          {o.name}
++                                        </Select.Item>
++                                      ))
++                                    ) : (
++                                      <Select.Item value="no-shipping-methods" disabled>
++                                        No shipping methods available
+                                       </Select.Item>
+-                                    ))}
++                                    )}
+                                   </Select.Content>
+                                 </Select>
+                               </Form.Control>
