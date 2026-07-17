@@ -24,3 +24,11 @@ Client-owned files (role definitions, UI widgets, translations, env) are protect
 - **Marketplace orders:** External order creation from platforms like Shopee, Lazada
 
 See the [template README](https://github.com/high6/high6-medusa-commerce) for full architecture details.
+
+## Docs
+
+| Directory                              | Contents                                          |
+| -------------------------------------- | ------------------------------------------------- |
+| [docs/cosmos/](docs/cosmos/)           | Cosmos Shop handoff documents                     |
+| [docs/omnichannel/](docs/omnichannel/) | Template/omnichannel handoff history (v1–v14)     |
+| [docs/misc/](docs/misc/)               | Investigations, task reports, regression analyses |

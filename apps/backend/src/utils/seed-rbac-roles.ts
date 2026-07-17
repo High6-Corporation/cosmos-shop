@@ -19,8 +19,8 @@ import { allCrud, readWrite, readOnly } from "./seed-rbac-core";
 export { allCrud, readWrite, readOnly };
 
 export const BOOTSTRAP_USER_ROLES: Array<{ email: string; roleName: string }> = [
-  { email: "medusa.test@high6.com", roleName: "Super Admin" },
-  { email: "owner.test@high6.dev", roleName: "Store Owner" },
+  { email: "superadmin@cosmosshop.dev", roleName: "Super Admin" },
+  { email: "owner@cosmosshop.dev", roleName: "Store Owner" },
 ];
 
 // ---------------------------------------------------------------------------
