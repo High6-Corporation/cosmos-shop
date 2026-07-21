@@ -8,6 +8,8 @@ import CartMismatchBanner from "@modules/layout/components/cart-mismatch-banner"
 import Footer from "@modules/layout/templates/footer"
 import Nav from "@modules/layout/templates/nav"
 import FreeShippingPriceNudge from "@modules/shipping/components/free-shipping-price-nudge"
+import CartSheetProvider from "@modules/cart/components/cart-sheet-provider"
+import CartSheet from "@modules/cart/components/cart-sheet"
 
 // Force dynamic rendering — e-commerce pages fetch per-request data
 // (cart, customer) and use Medusa UI components that require React context
@@ -30,21 +32,24 @@ export default async function PageLayout(props: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="bg-cosmos-paper min-h-screen">
-      <Nav />
-      {customer && cart && (
-        <CartMismatchBanner customer={customer} cart={cart} />
-      )}
+    <CartSheetProvider initialCart={cart}>
+      <div className="bg-cosmos-paper min-h-screen">
+        <Nav />
+        {customer && cart && (
+          <CartMismatchBanner customer={customer} cart={cart} />
+        )}
 
-      {cart && (
-        <FreeShippingPriceNudge
-          variant="popup"
-          cart={cart}
-          shippingOptions={shippingOptions}
-        />
-      )}
-      {props.children}
-      <Footer />
-    </div>
+        {cart && (
+          <FreeShippingPriceNudge
+            variant="popup"
+            cart={cart}
+            shippingOptions={shippingOptions}
+          />
+        )}
+        {props.children}
+        <Footer />
+      </div>
+      <CartSheet />
+    </CartSheetProvider>
   )
 }
