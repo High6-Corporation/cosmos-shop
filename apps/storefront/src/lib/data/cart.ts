@@ -21,7 +21,11 @@ import { getLocale } from "./locale-actions"
  * @param cartId - optional - The ID of the cart to retrieve.
  * @returns The cart object if found, or null if not found.
  */
-export async function retrieveCart(cartId?: string, fields?: string) {
+export async function retrieveCart(
+  cartId?: string,
+  fields?: string,
+  opts?: { noCache?: boolean },
+) {
   const id = cartId || (await getCartId())
   fields ??=
     "*items, *region, *items.product, *items.product.categories, *items.product.collection, *items.variant, *items.variant.images, *items.variant.metadata, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name"
@@ -43,10 +47,11 @@ export async function retrieveCart(cartId?: string, fields?: string) {
       method: "GET",
       query: {
         fields,
+        ...(opts?.noCache ? { _t: Date.now() } : {}),
       },
       headers,
       next,
-      cache: "force-cache",
+      cache: opts?.noCache ? "no-store" : "force-cache",
     })
     .then(({ cart }: { cart: HttpTypes.StoreCart }) => cart)
     .catch(() => null)

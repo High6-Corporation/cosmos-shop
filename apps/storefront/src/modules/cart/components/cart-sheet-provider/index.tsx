@@ -24,7 +24,8 @@ const CartSheetContext = createContext<CartSheetContextValue | null>(null)
 
 export function useCartSheet() {
   const ctx = useContext(CartSheetContext)
-  if (!ctx) throw new Error("useCartSheet must be used within CartSheetProvider")
+  if (!ctx)
+    throw new Error("useCartSheet must be used within CartSheetProvider")
   return ctx
 }
 
@@ -54,7 +55,8 @@ export default function CartSheetProvider({
 
   const refreshCart = useCallback(async () => {
     try {
-      const fresh = await retrieveCart()
+      // Bypass force-cache to ensure fresh cart data after mutations
+      const fresh = await retrieveCart(undefined, undefined, { noCache: true })
       setCart(fresh)
     } catch {
       // cart fetch failed — keep current state

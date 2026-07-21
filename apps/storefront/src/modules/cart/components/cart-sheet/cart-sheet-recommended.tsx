@@ -99,7 +99,8 @@ export default function CartSheetRecommended({
         countryCode,
       })
       setAdded((prev) => ({ ...prev, [productId]: true }))
-      // Force immediate cart refresh before opening sheet (router-refresh is async)
+      // Optimistic removal — filter out before refreshCart to avoid stale-cache race
+      setProducts((prev) => prev.filter((p) => p.id !== product.id))
       await refreshCart()
       openSheet()
       setTimeout(() => {
