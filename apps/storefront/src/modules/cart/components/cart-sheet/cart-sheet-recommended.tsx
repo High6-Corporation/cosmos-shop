@@ -43,18 +43,16 @@ export default function CartSheetRecommended({
           ),
         ]
 
-        if (categoryIds.length === 0) {
-          setProducts([])
-          return
-        }
-
-        // Server-side filter by first category (Medusa API accepts single category_id)
+        // Server-side filter by first category if available, otherwise fetch popular products
         const { response } = await listProducts({
           countryCode,
           queryParams: {
-            category_id: categoryIds[0],
-            limit: 20,
-            fields: "*variants.calculated_price,*thumbnail,*images",
+            ...(categoryIds.length > 0
+              ? { category_id: categoryIds[0] }
+              : {}),
+            limit: categoryIds.length > 0 ? 20 : 4,
+            fields:
+              "*variants.calculated_price,*thumbnail,*images",
           },
         })
 
