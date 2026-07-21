@@ -6,7 +6,7 @@ import { useCartSheet } from "@modules/cart/components/cart-sheet-provider"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@modules/common/components/ui"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import { useCallback, useEffect, useState } from "react"
+import React, { useCallback, useEffect, useState } from "react"
 import QuickAddModal from "./quick-add-modal"
 
 type CartSheetRecommendedProps = {
@@ -37,12 +37,6 @@ export default function CartSheetRecommended({
       )
 
       // Direct SDK fetch — NOT a server action (avoids router.refresh closing the sheet).
-      // Fetch all products (catalog is small — ~11 items).
-      const region = cart.region_id
-        ? await sdk.store.region.retrieve(cart.region_id)
-        : null
-      const regionId = region?.region?.id ?? cart.region_id
-
       const data = await sdk.client.fetch<{
         products: HttpTypes.StoreProduct[]
         count: number
@@ -50,7 +44,7 @@ export default function CartSheetRecommended({
         method: "GET",
         query: {
           limit: 50,
-          region_id: regionId,
+          region_id: cart.region_id,
           fields:
             "*variants,*variants.calculated_price,*thumbnail,*images,*variants.inventory_quantity,*variants.manage_inventory,*variants.allow_backorder,*options,*options.values",
         },
@@ -172,7 +166,10 @@ export default function CartSheetRecommended({
                     )}
                   </LocalizedClientLink>
                   <Button
-                    onClick={() => handleQuickAdd(product)}
+                    onClick={(e: React.MouseEvent) => {
+                      e.stopPropagation()
+                      handleQuickAdd(product)
+                    }}
                     size="small"
                     variant="secondary"
                     disabled={adding[productId]}
@@ -187,13 +184,6 @@ export default function CartSheetRecommended({
             })}
           </div>
         </div>
-        <button
-          onClick={() => fetchRecommended()}
-          disabled={fetching}
-          className="block w-full text-center text-xs text-cosmos-graphite hover:text-cosmos-charcoal mt-3 transition-colors disabled:opacity-50"
-        >
-          {fetching ? "Loading…" : "See more →"}
-        </button>
       </div>
 
       {modalProduct && (
