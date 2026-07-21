@@ -6,7 +6,7 @@ import { useCartSheet } from "@modules/cart/components/cart-sheet-provider"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@modules/common/components/ui"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import QuickAddModal from "./quick-add-modal"
 
 type CartSheetRecommendedProps = {
@@ -27,11 +27,28 @@ export default function CartSheetRecommended({
   const [adding, setAdding] = useState<Record<string, boolean>>({})
   const [added, setAdded] = useState<Record<string, boolean>>({})
 
+  // Fetch only when the cart item count changes (sheet opens, items added/removed
+  // from elsewhere). Do NOT refetch on every cart object change — quick-add
+  // optimistically removes the added product instead.
+  const prevItemCount = useRef(cart?.items?.length ?? 0)
+
   useEffect(() => {
-    if (!cart?.items?.length) {
+    const currentCount = cart?.items?.length ?? 0
+
+    // Only fetch on mount or when items are added/removed externally
+    // (not from our own quick-add which optimistically filters)
+    if (currentCount === 0) {
       setProducts([])
+      prevItemCount.current = 0
       return
     }
+
+    if (currentCount === prevItemCount.current && products.length > 0) {
+      // Cart count unchanged and we already have products — skip re-fetch
+      return
+    }
+
+    prevItemCount.current = currentCount
 
     const fetchRecommended = async () => {
       try {
@@ -75,7 +92,7 @@ export default function CartSheetRecommended({
     }
 
     fetchRecommended()
-  }, [cart, countryCode])
+  }, [cart?.items?.length, countryCode])
 
   const isMultiVariant = (product: HttpTypes.StoreProduct) =>
     (product.variants?.length ?? 0) > 1
