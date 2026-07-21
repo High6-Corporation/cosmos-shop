@@ -5,22 +5,21 @@ import { HttpTypes } from "@medusajs/types"
 import { Button } from "@modules/common/components/ui"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { useCallback, useEffect, useState } from "react"
-import QuickAddModal from "./quick-add-modal"
 
 type CartSheetRecommendedProps = {
   cart: HttpTypes.StoreCart | null
   countryCode: string
   showEmptyState?: boolean
+  onQuickAdd: (product: HttpTypes.StoreProduct) => void
 }
 
 export default function CartSheetRecommended({
   cart,
   countryCode,
   showEmptyState,
+  onQuickAdd,
 }: CartSheetRecommendedProps) {
   const [products, setProducts] = useState<HttpTypes.StoreProduct[]>([])
-  const [modalProduct, setModalProduct] =
-    useState<HttpTypes.StoreProduct | null>(null)
   const [fetching, setFetching] = useState(false)
 
   const fetchRecommended = useCallback(async () => {
@@ -129,7 +128,7 @@ export default function CartSheetRecommended({
                 <Button
                   onClick={(e) => {
                     e.stopPropagation()
-                    setModalProduct(product)
+                    onQuickAdd(product)
                   }}
                   size="small"
                   variant="secondary"
@@ -144,14 +143,6 @@ export default function CartSheetRecommended({
         </div>
       </div>
 
-      {modalProduct && (
-        <QuickAddModal
-          product={modalProduct}
-          countryCode={countryCode}
-          open={!!modalProduct}
-          onClose={() => setModalProduct(null)}
-        />
-      )}
     </>
   )
 }
