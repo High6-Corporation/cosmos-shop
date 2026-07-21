@@ -6,14 +6,11 @@ import { HttpTypes } from "@medusajs/types"
 import { Button } from "@modules/common/components/ui"
 import Divider from "@modules/common/components/divider"
 import VariantSwatchCard from "@modules/products/components/product-actions/variant-swatch-card"
-import QuantityStepper from "@modules/products/components/product-actions/quantity-stepper"
-import { isEqual } from "lodash"
-import { useParams, usePathname, useSearchParams } from "next/navigation"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCartSheet } from "@modules/cart/components/cart-sheet-provider"
+import { useParams } from "next/navigation"
+import { useMemo, useRef, useState } from "react"
 import ProductPrice from "../product-price"
 import MobileActions from "./mobile-actions"
-import { useRouter } from "next/navigation"
-import EngravingToggle from "../engraving-toggle"
 
 type ProductActionsProps = {
   product: HttpTypes.StoreProduct
@@ -21,162 +18,197 @@ type ProductActionsProps = {
   disabled?: boolean
 }
 
-const optionsAsKeymap = (
-  variantOptions: HttpTypes.StoreProductVariant["options"],
-) => {
-  return variantOptions?.reduce((acc: Record<string, string>, varopt) => {
-    if (varopt.option_id) acc[varopt.option_id] = varopt.value
-    return acc
-  }, {})
-}
-
 export default function ProductActions({
   product,
   region,
   disabled,
 }: ProductActionsProps) {
-  const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-
-  const [options, setOptions] = useState<Record<string, string | undefined>>({})
-  const [isAdding, setIsAdding] = useState(false)
-  const [quantity, setQuantity] = useState(1)
+  const { openSheet, setPartialFailureMessage } = useCartSheet()
   const countryCode = useParams().countryCode as string
 
-  // If there is only 1 variant, preselect the options
-  useEffect(() => {
-    if (product.variants?.length === 1) {
-      const variantOptions = optionsAsKeymap(product.variants[0].options)
-      setOptions(variantOptions ?? {})
+  // Multi-variant state
+  const [quantities, setQuantities] = useState<Record<string, number>>({})
+  const [engravingTexts, setEngravingTexts] = useState<Record<string, string>>(
+    {},
+  )
+  const [useSameText, setUseSameText] = useState(false)
+  const [sharedEngravingText, setSharedEngravingText] = useState("")
+  const [isAdding, setIsAdding] = useState(false)
+
+  // Per-variant metadata lookup — centralizes inventory + engraving logic
+  const variantMeta = useMemo(() => {
+    const map: Record<
+      string,
+      {
+        isEngravable: boolean
+        fee: number
+        threshold: number
+        inStock: boolean | null
+        maxQty: number | null
+        price: number | null
+      }
+    > = {}
+    for (const v of product.variants ?? []) {
+      if (!v.id) continue
+      const isEngravable =
+        v.metadata?.is_engravable === true ||
+        v.metadata?.is_engravable === "true"
+      const fee = Number(v.metadata?.engraving_fee) || 0
+      const threshold = Number(v.metadata?.engraving_threshold) || 0
+
+      let inStock: boolean | null = null
+      let maxQty: number | null = null
+      if (!v.manage_inventory) {
+        inStock = true
+        maxQty = null
+      } else if (v.allow_backorder) {
+        inStock = true
+        maxQty = null
+      } else if ((v.inventory_quantity || 0) > 0) {
+        inStock = true
+        maxQty = v.inventory_quantity ?? 0
+      } else {
+        inStock = false
+        maxQty = 0
+      }
+
+      map[v.id] = {
+        isEngravable,
+        fee,
+        threshold,
+        inStock,
+        maxQty,
+        price: v.calculated_price?.calculated_amount ?? null,
+      }
     }
+    return map
   }, [product.variants])
 
-  const selectedVariant = useMemo(() => {
-    if (!product.variants || product.variants.length === 0) {
-      return
+  // Selected (qty > 0) variants
+  const selectedVariants = useMemo(() => {
+    return (product.variants ?? []).filter(
+      (v) => (quantities[v.id!] ?? 0) > 0,
+    )
+  }, [product.variants, quantities])
+
+  // Engravable selected variants
+  const engravableVariants = useMemo(() => {
+    return selectedVariants.filter((v) => variantMeta[v.id!]?.isEngravable)
+  }, [selectedVariants, variantMeta])
+
+  const showSharedToggle = engravableVariants.length >= 2
+
+  // Handle "use same text" toggle
+  const handleUseSameTextToggle = (checked: boolean) => {
+    if (checked) {
+      // Initialize shared from first non-empty individual text
+      const firstNonEmpty = engravableVariants.find(
+        (v) => (engravingTexts[v.id!] ?? "").trim() !== "",
+      )?.id
+      setSharedEngravingText(
+        firstNonEmpty ? (engravingTexts[firstNonEmpty] ?? "") : "",
+      )
     }
-
-    return product.variants.find((v) => {
-      const variantOptions = optionsAsKeymap(v.options)
-      return isEqual(variantOptions, options)
-    })
-  }, [product.variants, options])
-
-  // update the options when a variant is selected
-  const setOptionValue = (optionId: string, value: string) => {
-    setOptions((prev) => ({
-      ...prev,
-      [optionId]: value,
-    }))
+    setUseSameText(checked)
   }
 
-  //check if the selected options produce a valid variant
-  const isValidVariant = useMemo(() => {
-    return product.variants?.some((v) => {
-      const variantOptions = optionsAsKeymap(v.options)
-      return isEqual(variantOptions, options)
-    })
-  }, [product.variants, options])
-
-  useEffect(() => {
-    const params = new URLSearchParams(searchParams.toString())
-    const value = isValidVariant ? selectedVariant?.id : null
-
-    if (params.get("v_id") === value) {
-      return
+  // Button total with engraving threshold zeroing
+  const { totalItems, totalPrice } = useMemo(() => {
+    let items = 0
+    let price = 0
+    for (const v of selectedVariants) {
+      const qty = quantities[v.id!] ?? 0
+      const meta = variantMeta[v.id!]
+      if (!meta) continue
+      items += qty
+      const unitPrice = meta.price ?? 0
+      const text = useSameText
+        ? sharedEngravingText
+        : (engravingTexts[v.id!] ?? "")
+      const hasText = text.trim().length > 0
+      // Fee is waived only when a real threshold is set AND met (threshold=0 means no free tier)
+      const feeWaived =
+        meta.isEngravable && meta.threshold > 0 && qty >= meta.threshold
+      const engravingFee =
+        hasText && meta.isEngravable && !feeWaived ? meta.fee : 0
+      price += (unitPrice + engravingFee) * qty
     }
+    return { totalItems: items, totalPrice: price }
+  }, [
+    selectedVariants,
+    quantities,
+    variantMeta,
+    useSameText,
+    sharedEngravingText,
+    engravingTexts,
+  ])
 
-    if (value) {
-      params.set("v_id", value)
-    } else {
-      params.delete("v_id")
-    }
+  const currencyCode = region?.currency_code ?? "PHP"
+  const formattedTotal = new Intl.NumberFormat("en-PH", {
+    style: "currency",
+    currency: currencyCode,
+  }).format(totalPrice)
 
-    router.replace(pathname + "?" + params.toString())
-  }, [selectedVariant, isValidVariant])
+  const anyOutOfStock = selectedVariants.some(
+    (v) => variantMeta[v.id!]?.inStock === false,
+  )
 
-  // check if the selected variant is in stock
-  const inStock = useMemo(() => {
-    // No variant selected yet — neutral
-    if (!selectedVariant) {
-      return null
-    }
-
-    // If we don't manage inventory, we can always add to cart
-    if (!selectedVariant.manage_inventory) {
-      return true
-    }
-
-    // If we allow back orders on the variant, we can add to cart
-    if (selectedVariant.allow_backorder) {
-      return true
-    }
-
-    // If there is inventory available, we can add to cart
-    if (
-      selectedVariant.manage_inventory &&
-      (selectedVariant.inventory_quantity || 0) > 0
-    ) {
-      return true
-    }
-
-    // Otherwise, we can't add to cart
-    return false
-  }, [selectedVariant])
-
-  // Compute the max quantity for the stepper
-  const maxQuantity = useMemo(() => {
-    if (!selectedVariant) return null
-    if (!selectedVariant.manage_inventory || selectedVariant.allow_backorder) {
-      return null // unlimited
-    }
-    return selectedVariant.inventory_quantity ?? 0
-  }, [selectedVariant])
-
-  // Reset quantity to 1 when variant changes
-  useEffect(() => {
-    setQuantity(1)
-  }, [selectedVariant?.id])
-
-  // Engraving: read variant-level eligibility + pricing from metadata
-  const [isEngraved, setIsEngraved] = useState(false)
-
-  const engravingMeta = useMemo(() => {
-    const meta = selectedVariant?.metadata ?? {}
-    const isEngravable =
-      meta?.is_engravable === true || meta?.is_engravable === "true"
-    const fee = Number(meta?.engraving_fee) || 0
-    const threshold = Number(meta?.engraving_threshold) || 0
-    return { isEngravable, fee, threshold }
-  }, [selectedVariant])
-
-  // Reset engraving toggle when variant changes
-  useEffect(() => {
-    setIsEngraved(false)
-  }, [selectedVariant?.id])
-
-  const actionsRef = useRef<HTMLDivElement>(null)
-
-  const inView = useIntersection(actionsRef, "0px")
-
-  // add the selected variant to the cart
   const handleAddToCart = async () => {
-    if (!selectedVariant?.id) return null
-
+    if (totalItems === 0) return
     setIsAdding(true)
 
-    await addToCart({
-      variantId: selectedVariant.id,
-      quantity,
-      countryCode,
-      ...(engravingMeta.isEngravable && isEngraved
-        ? { metadata: { engraved: true } }
-        : {}),
+    const items = selectedVariants.map((v) => {
+      const qty = quantities[v.id!] ?? 0
+      const text = useSameText
+        ? sharedEngravingText
+        : (engravingTexts[v.id!] ?? "")
+      const hasText = text.trim().length > 0
+      const meta = variantMeta[v.id!]
+      return {
+        variantId: v.id!,
+        quantity: qty,
+        metadata:
+          hasText && meta?.isEngravable
+            ? { engraved: true, engraved_text: text }
+            : undefined,
+      }
+    })
+
+    const results = await Promise.allSettled(
+      items.map((item) => addToCart({ ...item, countryCode })),
+    )
+
+    const succeeded: string[] = []
+    const failed: string[] = []
+    results.forEach((r, i) => {
+      const label =
+        selectedVariants[i]?.title ?? selectedVariants[i]?.id ?? "item"
+      if (r.status === "fulfilled") succeeded.push(label)
+      else failed.push(label)
     })
 
     setIsAdding(false)
+    openSheet()
+
+    if (failed.length > 0 && succeeded.length > 0) {
+      setPartialFailureMessage(
+        `${succeeded.map((s) => s + " added").join(", ")}. ${failed.map((f) => f + " couldn't be added").join(", ")}.`,
+      )
+    } else if (failed.length > 0 && succeeded.length === 0) {
+      setPartialFailureMessage(
+        `Couldn't add items: ${failed.join(", ")}. Please try again.`,
+      )
+    }
+
+    // Reset state after add
+    setQuantities({})
+    setEngravingTexts({})
+    setUseSameText(false)
+    setSharedEngravingText("")
   }
+
+  const actionsRef = useRef<HTMLDivElement>(null)
+  const inView = useIntersection(actionsRef, "0px")
 
   return (
     <>
@@ -191,11 +223,46 @@ export default function ProductActions({
                       option={option}
                       variants={product.variants ?? []}
                       productImages={product.images ?? null}
-                      current={options[option.id]}
-                      updateOption={setOptionValue}
+                      current={undefined}
+                      updateOption={() => {}} // no-op in multi-select mode
                       title={option.title ?? ""}
                       data-testid="product-options"
                       disabled={!!disabled || isAdding}
+                      // Multi-select props:
+                      variantQuantities={quantities}
+                      onVariantQuantityChange={(variantId, qty) =>
+                        setQuantities((prev) => ({
+                          ...prev,
+                          [variantId]: qty,
+                        }))
+                      }
+                      variantEngravingTexts={
+                        useSameText
+                          ? Object.fromEntries(
+                              engravableVariants.map((v) => [
+                                v.id!,
+                                sharedEngravingText,
+                              ]),
+                            )
+                          : engravingTexts
+                      }
+                      onVariantEngravingTextChange={(variantId, text) => {
+                        if (useSameText) {
+                          setSharedEngravingText(text)
+                          setEngravingTexts((prev) => {
+                            const next = { ...prev }
+                            for (const ev of engravableVariants)
+                              next[ev.id!] = text
+                            return next
+                          })
+                        } else {
+                          setEngravingTexts((prev) => ({
+                            ...prev,
+                            [variantId]: text,
+                          }))
+                        }
+                      }}
+                      variantMeta={variantMeta}
                     />
                   </div>
                 )
@@ -205,97 +272,47 @@ export default function ProductActions({
           )}
         </div>
 
-        <ProductPrice product={product} variant={selectedVariant} />
+        {/* "Use same text for all" toggle */}
+        {showSharedToggle && (
+          <label className="flex items-center gap-x-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={useSameText}
+              onChange={(e) => handleUseSameTextToggle(e.target.checked)}
+              className="w-4 h-4 rounded border-cosmos-hairline text-cosmos-vermilion focus:ring-cosmos-ink"
+              data-testid="use-same-text-checkbox"
+            />
+            <span className="text-sm text-cosmos-charcoal">
+              Use the same text for all variants
+            </span>
+          </label>
+        )}
 
-        <QuantityStepper
-          quantity={quantity}
-          onChange={setQuantity}
-          max={maxQuantity}
-          disabled={(!selectedVariant || inStock === false) ?? false}
-          data-testid="product-quantity-stepper"
-        />
-
-        {isEngraved &&
-          engravingMeta.fee > 0 &&
-          selectedVariant?.calculated_price?.calculated_amount != null && (
-            <p
-              className="text-sm text-cosmos-graphite"
-              data-testid="engraved-price-breakdown"
-            >
-              {new Intl.NumberFormat("en-PH", {
-                style: "currency",
-                currency: region?.currency_code ?? "PHP",
-              }).format(
-                selectedVariant.calculated_price.calculated_amount,
-              )}{" "}
-              +{" "}
-              {new Intl.NumberFormat("en-PH", {
-                style: "currency",
-                currency: region?.currency_code ?? "PHP",
-              }).format(engravingMeta.fee)}{" "}
-              engraving ={" "}
-              {new Intl.NumberFormat("en-PH", {
-                style: "currency",
-                currency: region?.currency_code ?? "PHP",
-              }).format(
-                selectedVariant.calculated_price.calculated_amount +
-                  engravingMeta.fee,
-              )}{" "}
-              per unit
-            </p>
-          )}
-
-        <EngravingToggle
-          isEngravable={engravingMeta.isEngravable}
-          fee={engravingMeta.fee}
-          threshold={engravingMeta.threshold}
-          currencyCode={region?.currency_code ?? "USD"}
-          engraved={isEngraved}
-          onToggle={setIsEngraved}
-          disabled={!!disabled || isAdding}
-        />
+        <ProductPrice product={product} variant={undefined} />
 
         <Button
           onClick={handleAddToCart}
           disabled={
-            !selectedVariant ||
-            inStock === false ||
-            !!disabled ||
-            isAdding ||
-            !isValidVariant
+            totalItems === 0 || anyOutOfStock || !!disabled || isAdding
           }
           variant="primary"
           className="w-full h-10 bg-cosmos-ink hover:bg-cosmos-charcoal text-white"
           isLoading={isAdding}
           data-testid="add-product-button"
         >
-          {!selectedVariant
-            ? "Select variant"
-            : !isValidVariant
-              ? "Select variant"
-              : inStock === false
-                ? "Out of stock"
-                : `Add to cart — ${quantity}`}
+          {totalItems === 0
+            ? anyOutOfStock
+              ? "Out of stock"
+              : "Select variants"
+            : `Add ${totalItems} item${totalItems > 1 ? "s" : ""} to cart — ${formattedTotal}`}
         </Button>
-
-        {selectedVariant?.manage_inventory &&
-          selectedVariant.inventory_quantity != null && (
-            <p
-              className="text-sm text-cosmos-graphite text-center"
-              data-testid="inventory-count"
-            >
-              {inStock === false
-                ? "Out of stock"
-                : `${selectedVariant.inventory_quantity} in stock`}
-            </p>
-          )}
 
         <MobileActions
           product={product}
-          variant={selectedVariant}
-          options={options}
-          updateOptions={setOptionValue}
-          inStock={inStock}
+          variant={selectedVariants[0] ?? null}
+          options={{}}
+          updateOptions={() => {}}
+          inStock={!anyOutOfStock}
           handleAddToCart={handleAddToCart}
           isAdding={isAdding}
           show={!inView}
