@@ -103,7 +103,10 @@ const VariantSwatchCard: React.FC<VariantSwatchCardProps> = ({
   return (
     <div className="flex flex-col gap-y-3">
       <span className="text-sm font-medium text-cosmos-charcoal">{title}</span>
-      <div className="grid grid-cols-1 gap-4" data-testid={dataTestId}>
+      <div
+        className="grid grid-cols-1 gap-4"
+        data-testid={dataTestId}
+      >
         {filteredOptions.map((value) => {
           const imageUrl = resolveImage(value)
           const inStock = isInStock(value)
@@ -114,26 +117,16 @@ const VariantSwatchCard: React.FC<VariantSwatchCardProps> = ({
 
           const isMultiSelect = !!onVariantQuantityChange
 
-          const imageWrapperClass = isMultiSelect
-            ? "relative w-20 h-20 flex-shrink-0 overflow-hidden rounded-md bg-cosmos-washi"
-            : "relative w-full aspect-square overflow-hidden rounded-md bg-cosmos-washi"
-
-          const controlsWrapperClass = isMultiSelect
-            ? "flex-1 min-w-0 flex flex-col gap-y-1.5"
-            : ""
-
-          const ControlsWrapper = isMultiSelect
-            ? ({ children }: { children: React.ReactNode }) => (
-                <div className={controlsWrapperClass}>{children}</div>
-              )
-            : ({ children }: { children: React.ReactNode }) => <>{children}</>
-
           const cardContent = (
             <>
-              {/* Image area */}
-              <div className={imageWrapperClass}>
-              {/* Image area */}
-              <div className="relative w-full aspect-square overflow-hidden rounded-md bg-cosmos-washi">
+              {/* Image area — fixed size in multi-select, full-width in single-select */}
+              <div
+                className={
+                  isMultiSelect
+                    ? "relative w-20 h-20 flex-shrink-0 overflow-hidden rounded-md bg-cosmos-washi"
+                    : "relative w-full aspect-square overflow-hidden rounded-md bg-cosmos-washi"
+                }
+              >
                 {/* Deselect button — only in multi-select mode when selected */}
                 {isMultiSelect && selected && (
                   <button
@@ -169,7 +162,8 @@ const VariantSwatchCard: React.FC<VariantSwatchCardProps> = ({
                 )}
               </div>
 
-              <ControlsWrapper>
+              {/* Label + controls wrapper — flex-1 in multi-select for horizontal layout */}
+              <div className={isMultiSelect ? "flex-1 min-w-0 flex flex-col gap-y-1" : ""}>
                 {/* Label */}
                 <span
                   className={clx(
@@ -182,18 +176,18 @@ const VariantSwatchCard: React.FC<VariantSwatchCardProps> = ({
                 </span>
 
                 {/* Inline stepper — rendered when multi-select props are provided */}
-              {onVariantQuantityChange &&
-                (() => {
-                  const variant = valueToVariant[value]
-                  const variantId = variant?.id
-                  if (!variantId) return null
-                  const qty = variantQuantities?.[variantId] ?? 0
-                  const meta = variantMeta?.[variantId]
-                  return (
-                    <div
-                      className="w-full mt-1.5"
-                      onClick={(e) => e.stopPropagation()}
-                    >
+                {onVariantQuantityChange &&
+                  (() => {
+                    const variant = valueToVariant[value]
+                    const variantId = variant?.id
+                    if (!variantId) return null
+                    const qty = variantQuantities?.[variantId] ?? 0
+                    const meta = variantMeta?.[variantId]
+                    return (
+                      <div
+                        className="w-full"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                       <QuantityStepper
                         quantity={qty}
                         onChange={(newQty) =>
@@ -253,7 +247,7 @@ const VariantSwatchCard: React.FC<VariantSwatchCardProps> = ({
                   )
                 })()}
 
-              </ControlsWrapper>
+              </div>
 
               {/* Out-of-stock badge */}
               {!inStock && (
