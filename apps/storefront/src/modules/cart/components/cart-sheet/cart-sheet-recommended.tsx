@@ -1,7 +1,7 @@
 "use client"
 
 import { addToCart } from "@lib/data/cart"
-import { listProducts } from "@lib/data/products"
+import { sdk } from "@lib/config"
 import { useCartSheet } from "@modules/cart/components/cart-sheet-provider"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@modules/common/components/ui"
@@ -36,18 +36,27 @@ export default function CartSheetRecommended({
         cart.items?.map((item) => item.variant_id).filter(Boolean) ?? [],
       )
 
+      // Direct SDK fetch — NOT a server action (avoids router.refresh closing the sheet).
       // Fetch all products (catalog is small — ~11 items).
-      // No category filter — let cartVariantIds exclusion handle relevance.
-      const { response } = await listProducts({
-        countryCode,
-        queryParams: {
+      const region = cart.region_id
+        ? await sdk.store.region.retrieve(cart.region_id)
+        : null
+      const regionId = region?.region?.id ?? cart.region_id
+
+      const data = await sdk.client.fetch<{
+        products: HttpTypes.StoreProduct[]
+        count: number
+      }>("/store/products", {
+        method: "GET",
+        query: {
           limit: 50,
+          region_id: regionId,
           fields:
             "*variants,*variants.calculated_price,*thumbnail,*images,*variants.inventory_quantity,*variants.manage_inventory,*variants.allow_backorder,*options,*options.values",
         },
       })
 
-      const recommended = (response.products ?? [])
+      const recommended = (data.products ?? [])
         .filter((p) => !p.variants?.some((v) => cartVariantIds.has(v.id)))
         .slice(0, 4)
 
