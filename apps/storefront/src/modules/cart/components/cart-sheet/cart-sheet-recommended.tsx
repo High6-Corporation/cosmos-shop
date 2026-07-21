@@ -26,9 +26,7 @@ export default function CartSheetRecommended({
       try {
         // Collect variant IDs already in cart for exclusion
         const cartVariantIds = new Set(
-          cart.items
-            ?.map((item) => item.variant_id)
-            .filter(Boolean) ?? [],
+          cart.items?.map((item) => item.variant_id).filter(Boolean) ?? [],
         )
 
         // Extract unique category IDs from cart items' products
@@ -37,9 +35,9 @@ export default function CartSheetRecommended({
             (cart.items ?? [])
               .flatMap(
                 (item) =>
-                  (
-                    item.product as HttpTypes.StoreProduct
-                  )?.categories?.map((c: { id: string }) => c.id) ?? [],
+                  (item.product as HttpTypes.StoreProduct)?.categories?.map(
+                    (c: { id: string }) => c.id,
+                  ) ?? [],
               )
               .filter(Boolean),
           ),
@@ -50,13 +48,13 @@ export default function CartSheetRecommended({
           return
         }
 
-        // Server-side filter by category
+        // Server-side filter by first category (Medusa API accepts single category_id)
         const { response } = await listProducts({
           countryCode,
           queryParams: {
-            category_id: categoryIds,
+            category_id: categoryIds[0],
             limit: 20,
-            fields: "*variants,*images",
+            fields: "*variants.calculated_price,*thumbnail,*images",
           },
         })
 
@@ -110,8 +108,7 @@ export default function CartSheetRecommended({
                 {new Intl.NumberFormat("en-PH", {
                   style: "currency",
                   currency:
-                    product.variants[0].calculated_price.currency_code ??
-                    "PHP",
+                    product.variants[0].calculated_price.currency_code ?? "PHP",
                 }).format(
                   product.variants[0].calculated_price.calculated_amount,
                 )}

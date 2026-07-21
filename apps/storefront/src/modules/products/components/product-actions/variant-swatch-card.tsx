@@ -103,10 +103,7 @@ const VariantSwatchCard: React.FC<VariantSwatchCardProps> = ({
   return (
     <div className="flex flex-col gap-y-3">
       <span className="text-sm font-medium text-cosmos-charcoal">{title}</span>
-      <div
-        className="grid grid-cols-2 small:grid-cols-3 gap-3"
-        data-testid={dataTestId}
-      >
+      <div className="grid grid-cols-1 gap-4" data-testid={dataTestId}>
         {filteredOptions.map((value) => {
           const imageUrl = resolveImage(value)
           const inStock = isInStock(value)
@@ -117,10 +114,43 @@ const VariantSwatchCard: React.FC<VariantSwatchCardProps> = ({
 
           const isMultiSelect = !!onVariantQuantityChange
 
+          const imageWrapperClass = isMultiSelect
+            ? "relative w-20 h-20 flex-shrink-0 overflow-hidden rounded-md bg-cosmos-washi"
+            : "relative w-full aspect-square overflow-hidden rounded-md bg-cosmos-washi"
+
+          const controlsWrapperClass = isMultiSelect
+            ? "flex-1 min-w-0 flex flex-col gap-y-1.5"
+            : ""
+
+          const ControlsWrapper = isMultiSelect
+            ? ({ children }: { children: React.ReactNode }) => (
+                <div className={controlsWrapperClass}>{children}</div>
+              )
+            : ({ children }: { children: React.ReactNode }) => <>{children}</>
+
           const cardContent = (
             <>
               {/* Image area */}
+              <div className={imageWrapperClass}>
+              {/* Image area */}
               <div className="relative w-full aspect-square overflow-hidden rounded-md bg-cosmos-washi">
+                {/* Deselect button — only in multi-select mode when selected */}
+                {isMultiSelect && selected && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      const variant = valueToVariant[value]
+                      if (variant?.id && onVariantQuantityChange) {
+                        onVariantQuantityChange(variant.id, 0)
+                      }
+                    }}
+                    className="absolute top-1 right-1 z-10 w-5 h-5 flex items-center justify-center rounded-full bg-cosmos-charcoal/60 text-white text-xs hover:bg-cosmos-charcoal transition-colors"
+                    aria-label={`Deselect ${value}`}
+                    data-testid="variant-deselect"
+                  >
+                    ×
+                  </button>
+                )}
                 {imageUrl ? (
                   <Image
                     src={imageUrl}
@@ -139,17 +169,19 @@ const VariantSwatchCard: React.FC<VariantSwatchCardProps> = ({
                 )}
               </div>
 
-              {/* Label */}
-              <span
-                className={clx(
-                  "text-xs font-medium text-center leading-tight",
-                  selected ? "text-cosmos-charcoal" : "text-cosmos-graphite",
-                )}
-              >
-                {value}
-              </span>
+              <ControlsWrapper>
+                {/* Label */}
+                <span
+                  className={clx(
+                    "text-xs font-medium leading-tight",
+                    isMultiSelect ? "text-left" : "text-center",
+                    selected ? "text-cosmos-charcoal" : "text-cosmos-graphite",
+                  )}
+                >
+                  {value}
+                </span>
 
-              {/* Inline stepper — rendered when multi-select props are provided */}
+                {/* Inline stepper — rendered when multi-select props are provided */}
               {onVariantQuantityChange &&
                 (() => {
                   const variant = valueToVariant[value]
@@ -221,6 +253,8 @@ const VariantSwatchCard: React.FC<VariantSwatchCardProps> = ({
                   )
                 })()}
 
+              </ControlsWrapper>
+
               {/* Out-of-stock badge */}
               {!inStock && (
                 <span className="absolute top-1 right-1 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-cosmos-charcoal text-white">
@@ -253,7 +287,7 @@ const VariantSwatchCard: React.FC<VariantSwatchCardProps> = ({
             <div
               key={value}
               className={clx(
-                "relative flex flex-col items-center gap-2 rounded-lg border-2 p-3 transition-all duration-200",
+                "relative flex flex-row items-start gap-4 rounded-lg border-2 p-3 transition-all duration-200",
                 selected
                   ? "border-cosmos-vermilion bg-cosmos-paper shadow-md"
                   : "border-cosmos-hairline bg-cosmos-paper hover:border-cosmos-graphite hover:shadow-sm",
