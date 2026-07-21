@@ -36,7 +36,8 @@ export default function CartSheet() {
   const hasItems = !!(cart && itemCount > 0)
 
   return (
-    <Transition show={isSheetOpen} as={Fragment}>
+    <>
+      <Transition show={isSheetOpen} as={Fragment}>
       <Dialog onClose={handleClose} className="relative z-50">
         {/* Backdrop — shared */}
         <Transition.Child
