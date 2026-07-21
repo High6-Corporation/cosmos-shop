@@ -32,7 +32,7 @@ export default function QuickAddModal({
   open,
   onClose,
 }: QuickAddModalProps) {
-  const { openSheet } = useCartSheet()
+  const { openSheet, refreshCart } = useCartSheet()
   const [options, setOptions] = useState<Record<string, string | undefined>>({})
   const [quantity, setQuantity] = useState(1)
   const [isAdding, setIsAdding] = useState(false)
@@ -48,9 +48,7 @@ export default function QuickAddModal({
 
   // Check if all option groups have a selection
   const allOptionsSelected = useMemo(() => {
-    return (product.options || []).every(
-      (opt) => options[opt.id] !== undefined,
-    )
+    return (product.options || []).every((opt) => options[opt.id] !== undefined)
   }, [product.options, options])
 
   // Reset quantity to 1 when selected variant changes (prevents stale qty > new max)
@@ -93,6 +91,7 @@ export default function QuickAddModal({
         countryCode,
       })
       handleClose()
+      await refreshCart()
       openSheet()
     } catch {
       // addToCart is a server action that handles errors internally
@@ -189,9 +188,7 @@ export default function QuickAddModal({
                     quantity={quantity}
                     onChange={setQuantity}
                     max={maxQty}
-                    disabled={
-                      !selectedVariant || inStock === false || isAdding
-                    }
+                    disabled={!selectedVariant || inStock === false || isAdding}
                     compact
                     data-testid="quick-add-modal-stepper"
                   />
@@ -209,9 +206,7 @@ export default function QuickAddModal({
               <div className="px-4 py-3 border-t border-cosmos-hairline">
                 <Button
                   onClick={handleAdd}
-                  disabled={
-                    !selectedVariant || inStock === false || isAdding
-                  }
+                  disabled={!selectedVariant || inStock === false || isAdding}
                   variant="primary"
                   className="w-full h-10 bg-cosmos-ink hover:bg-cosmos-charcoal text-white"
                   isLoading={isAdding}

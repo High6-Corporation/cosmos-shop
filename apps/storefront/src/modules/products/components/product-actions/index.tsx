@@ -23,7 +23,7 @@ export default function ProductActions({
   region,
   disabled,
 }: ProductActionsProps) {
-  const { openSheet, setPartialFailureMessage } = useCartSheet()
+  const { openSheet, setPartialFailureMessage, refreshCart } = useCartSheet()
   const countryCode = useParams().countryCode as string
 
   // Multi-variant state
@@ -34,6 +34,7 @@ export default function ProductActions({
   const [useSameText, setUseSameText] = useState(false)
   const [sharedEngravingText, setSharedEngravingText] = useState("")
   const [isAdding, setIsAdding] = useState(false)
+  const [isAdded, setIsAdded] = useState(false)
 
   // Per-variant metadata lookup — centralizes inventory + engraving logic
   const variantMeta = useMemo(() => {
@@ -86,9 +87,7 @@ export default function ProductActions({
 
   // Selected (qty > 0) variants
   const selectedVariants = useMemo(() => {
-    return (product.variants ?? []).filter(
-      (v) => (quantities[v.id!] ?? 0) > 0,
-    )
+    return (product.variants ?? []).filter((v) => (quantities[v.id!] ?? 0) > 0)
   }, [product.variants, quantities])
 
   // Engravable selected variants
@@ -188,6 +187,14 @@ export default function ProductActions({
     })
 
     setIsAdding(false)
+    setIsAdded(true)
+
+    // Force cart refresh so the sheet opens with fresh data
+    await refreshCart()
+
+    // Brief "Added ✓" animation before opening the sheet
+    await new Promise((resolve) => setTimeout(resolve, 600))
+    setIsAdded(false)
     openSheet()
 
     if (failed.length > 0 && succeeded.length > 0) {
@@ -293,18 +300,28 @@ export default function ProductActions({
         <Button
           onClick={handleAddToCart}
           disabled={
-            totalItems === 0 || anyOutOfStock || !!disabled || isAdding
+            totalItems === 0 ||
+            anyOutOfStock ||
+            !!disabled ||
+            isAdding ||
+            isAdded
           }
           variant="primary"
-          className="w-full h-10 bg-cosmos-ink hover:bg-cosmos-charcoal text-white"
+          className={`w-full h-10 text-white transition-colors ${
+            isAdded
+              ? "bg-cosmos-forest hover:bg-cosmos-forest"
+              : "bg-cosmos-ink hover:bg-cosmos-charcoal"
+          }`}
           isLoading={isAdding}
           data-testid="add-product-button"
         >
-          {totalItems === 0
-            ? anyOutOfStock
-              ? "Out of stock"
-              : "Select variants"
-            : `Add ${totalItems} item${totalItems > 1 ? "s" : ""} to cart — ${formattedTotal}`}
+          {isAdded
+            ? "✓ Added!"
+            : totalItems === 0
+              ? anyOutOfStock
+                ? "Out of stock"
+                : "Select variants"
+              : `Add ${totalItems} item${totalItems > 1 ? "s" : ""} to cart — ${formattedTotal}`}
         </Button>
 
         <MobileActions

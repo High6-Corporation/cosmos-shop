@@ -20,7 +20,7 @@ export default function CartSheetRecommended({
   countryCode,
   showEmptyState,
 }: CartSheetRecommendedProps) {
-  const { openSheet } = useCartSheet()
+  const { openSheet, refreshCart, setPartialFailureMessage } = useCartSheet()
   const [products, setProducts] = useState<HttpTypes.StoreProduct[]>([])
   const [modalProduct, setModalProduct] =
     useState<HttpTypes.StoreProduct | null>(null)
@@ -99,12 +99,16 @@ export default function CartSheetRecommended({
         countryCode,
       })
       setAdded((prev) => ({ ...prev, [productId]: true }))
+      // Force immediate cart refresh before opening sheet (router-refresh is async)
+      await refreshCart()
       openSheet()
       setTimeout(() => {
         setAdded((prev) => ({ ...prev, [productId]: false }))
       }, 1500)
     } catch {
-      // Server action handles errors internally
+      setPartialFailureMessage(
+        `Couldn't add ${product.title ?? "item"}. Please try again.`,
+      )
     } finally {
       setAdding((prev) => ({ ...prev, [productId]: false }))
     }
@@ -118,9 +122,7 @@ export default function CartSheetRecommended({
           <p className="text-xs font-semibold text-cosmos-graphite uppercase tracking-wide mb-3">
             You might also like
           </p>
-          <p className="text-xs text-cosmos-graphite italic">
-            Check back soon
-          </p>
+          <p className="text-xs text-cosmos-graphite italic">Check back soon</p>
         </div>
       )
     }
@@ -161,17 +163,16 @@ export default function CartSheetRecommended({
                   <p className="text-xs font-medium text-cosmos-charcoal truncate group-hover:text-cosmos-ink transition-colors">
                     {product.title}
                   </p>
-                  {product.variants?.[0]?.calculated_price
-                    ?.calculated_amount != null && (
+                  {product.variants?.[0]?.calculated_price?.calculated_amount !=
+                    null && (
                     <p className="text-xs text-cosmos-graphite">
                       {new Intl.NumberFormat("en-PH", {
                         style: "currency",
                         currency:
-                          product.variants[0].calculated_price
-                            .currency_code ?? "PHP",
+                          product.variants[0].calculated_price.currency_code ??
+                          "PHP",
                       }).format(
-                        product.variants[0].calculated_price
-                          .calculated_amount,
+                        product.variants[0].calculated_price.calculated_amount,
                       )}
                     </p>
                   )}
