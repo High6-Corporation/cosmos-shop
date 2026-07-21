@@ -130,7 +130,7 @@ export default function CartSheetRecommended({
                   onClick={(e) => {
                     e.preventDefault()
                     e.stopPropagation()
-                    openQuickAdd(product)
+                    console.log("clicked + Add, NOT calling openQuickAdd")
                   }}
                   className="w-full mt-1 text-xs h-7 px-2 py-1 rounded-md border border-cosmos-hairline bg-cosmos-paper text-cosmos-charcoal hover:bg-cosmos-washi transition-colors cursor-pointer"
                   data-testid={`quick-add-${product.id}`}
