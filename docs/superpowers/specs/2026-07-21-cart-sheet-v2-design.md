@@ -20,7 +20,7 @@ Design system: **Ink & Paper** tokens. Existing components reused: `CartSheet`, 
 
 ## 2. Side Panel Layout
 
-### 2.1 Desktop (≥1024px)
+### 2.1 Desktop (≥1080px)
 
 ```
 ┌──────────────────────────────────────────────────────────┐
@@ -48,9 +48,9 @@ Design system: **Ink & Paper** tokens. Existing components reused: `CartSheet`, 
 - **Recommended panel**: `fixed` to the left of the cart, same height. Width ~280px. `z-40` so it sits behind the cart visually but is still a visible column. Animates in/out with the same Headless UI Transition pattern.
 - **Backdrop**: shared — clicking backdrop closes both panels.
 - **Scroll**: each panel scrolls independently (`overflow-y-auto`).
-- **Close**: closing the cart also closes the recommended panel. Closing the panel alone does not close the cart (but this interaction is rare since the backdrop dismisses both).
+- **Close**: only the shared backdrop dismisses both panels, and the cart sheet's ✕ button dismisses both. There is no independent close control for the recommended panel alone.
 
-### 2.2 Mobile (<1024px)
+### 2.2 Mobile (<1080px)
 
 ```
 ┌──────────────────────┐
@@ -136,16 +136,17 @@ Design system: **Ink & Paper** tokens. Existing components reused: `CartSheet`, 
 **Reuses:**
 
 - `VariantSwatchCard` in single-select mode (no multi-select props passed — falls back to click-to-select behavior)
-- `QuantityStepper` in compact mode — default qty: 1, min: 1
+- `QuantityStepper` in compact mode — default qty: 1, min: 1, max derived from `variant.inventory_quantity` (same stock-aware logic as PDP: unlimited if `!manage_inventory || allow_backorder`, else capped at `inventory_quantity`)
 
 **Behavior:**
 
-- Selecting a variant updates the modal's `selectedVariant` and enables the Add button
-- Clicking "Add to cart" calls `addToCart({ variantId, quantity, countryCode })`, closes the modal, and opens the cart sheet (if not already open)
-- Modal dismiss on backdrop click or ✕ button
-- State resets on close (selected variant cleared, qty back to 1)
+- For products with **one option group** (e.g., only Color): renders a single `VariantSwatchCard`. Selecting a variant enables Add.
+- For products with **multiple option groups** (e.g., Color + Size): renders one `VariantSwatchCard` per group (stacked vertically, compact). The Add button enables only when **every** option group has a selection (i.e., a valid `selectedVariant` exists).
+- Clicking "Add to cart" calls `addToCart({ variantId, quantity, countryCode })`, closes the modal, and opens the cart sheet (if not already open).
+- Modal dismiss on backdrop click or ✕ button.
+- State resets on close (selections cleared, qty back to 1).
 
-**Edge case — out of stock variant:** the VariantSwatchCard shows the dimmed "Out of stock" badge. The Add button is disabled and shows "Out of stock."
+**Edge case — out of stock variant:** the VariantSwatchCard shows the dimmed "Out of stock" badge. The Add button is disabled and shows "Out of stock" even if all option groups have selections.
 
 ---
 
@@ -171,15 +172,15 @@ Design system: **Ink & Paper** tokens. Existing components reused: `CartSheet`, 
 
 ### 4.2 Behavior
 
-| Action                                | Effect                                                                                                                                                     |
-| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Click "Yes"                           | Text field slides in. Toggles `engraved: true` on the line item.                                                                                           |
-| Click "No"                            | Text field slides out. Calls `updateLineItem({ metadata: { engraved: false, engraved_text: "" } })` to clear.                                              |
-| Type text                             | Debounced update: calls `updateLineItem({ metadata: { engraved: true, engraved_text: text } })` on each keystroke (existing pattern from `CartSheetItem`). |
-| Toggle No→Yes→No                      | Text value is preserved — re-selecting "Yes" restores the previously typed text.                                                                           |
-| Item added from PDP with engraving    | Toggle defaults to "Yes" with text pre-filled from `metadata.engraved_text`.                                                                               |
-| Item added from PDP without engraving | Toggle defaults to "No", text field is empty.                                                                                                              |
-| Ineligible variant                    | Toggle does not render at all — no engraving section visible.                                                                                              |
+| Action                                | Effect                                                                                                                                                                        |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Click "Yes"                           | Text field slides in. Toggles `engraved: true` on the line item.                                                                                                              |
+| Click "No"                            | Text field slides out. Updates server: `updateLineItem({ metadata: { engraved: false } })` — `engraved_text` is NOT cleared server-side, so it survives a sheet close/reopen. |
+| Type text                             | Calls `updateLineItem({ metadata: { engraved: true, engraved_text: text } })` after a 400ms pause in typing (debounced, not per-keystroke).                                   |
+| Toggle No→Yes→No                      | Text value is preserved — re-selecting "Yes" restores the previously typed text (from local state; from server metadata on remount since engraved_text is not cleared).       |
+| Item added from PDP with engraving    | Toggle defaults to "Yes" with text pre-filled from `metadata.engraved_text`.                                                                                                  |
+| Item added from PDP without engraving | Toggle defaults to "No", text field is empty.                                                                                                                                 |
+| Ineligible variant                    | Toggle does not render at all — no engraving section visible.                                                                                                                 |
 
 ### 4.3 Component structure
 
@@ -219,8 +220,8 @@ const [engravedText, setEngravedText] = useState(
 ### 4.6 Data flow
 
 - **Toggle on**: `updateLineItem({ lineId, quantity, metadata: { engraved: true, engraved_text: engravedText } })`
-- **Toggle off**: `updateLineItem({ lineId, quantity, metadata: { engraved: false, engraved_text: "" } })`
-- **Text change**: debounced `updateLineItem` with current metadata
+- **Toggle off**: `updateLineItem({ lineId, quantity, metadata: { engraved: false } })` — does NOT clear `engraved_text` server-side; text survives sheet close/reopen
+- **Text change**: debounced (400ms) `updateLineItem({ lineId, quantity, metadata: { engraved: true, engraved_text: newText } })`
 - **Server action triggers** router-refresh → `CartSheetProvider` syncs from new `initialCart`
 
 ---
@@ -244,4 +245,4 @@ const [engravedText, setEngravedText] = useState(
 - **Variant modal + cart sheet both open**: the modal stacks above the cart (z-60). Closing the modal returns focus to the recommended panel. Closing the cart closes the modal too.
 - **Already-in-cart products in recommended**: excluded by `cartVariantIds` filter (existing logic). If the user adds a recommended product, it disappears from the panel on re-render.
 - **Mobile recommended section with no products**: hides entirely — no empty state on mobile.
-- **Screen width 1024px–1080px**: the combined panel+cart width (280+400=680px) approaches the viewport edge. At this breakpoint, hide the recommended panel entirely (only the cart sheet is shown). The panel reappears at ≥1080px. Use a CSS media query or Tailwind `lg:block` pattern.
+- **Screen width <1080px**: the recommended panel does not render as a separate column; recommended products appear inside the cart sheet body (mobile layout in §2.2). The side-panel layout in §2.1 applies only at ≥1080px (Tailwind `xl:fixed` etc.).
