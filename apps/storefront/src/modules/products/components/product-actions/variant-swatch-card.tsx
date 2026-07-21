@@ -115,22 +115,10 @@ const VariantSwatchCard: React.FC<VariantSwatchCardProps> = ({
             ? (variantQuantities?.[valueToVariant[value]?.id ?? ""] ?? 0) > 0
             : value === current
 
-          return (
-            <button
-              onClick={() => updateOption(option.id, value)}
-              key={value}
-              disabled={disabled}
-              className={clx(
-                "relative flex flex-col items-center gap-2 rounded-lg border-2 p-3 transition-all duration-200",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cosmos-ink focus-visible:ring-offset-2",
-                selected
-                  ? "border-cosmos-vermilion bg-cosmos-paper shadow-md"
-                  : "border-cosmos-hairline bg-cosmos-paper hover:border-cosmos-graphite hover:shadow-sm",
-                !inStock && "opacity-50",
-                disabled && "cursor-not-allowed",
-              )}
-              data-testid="variant-swatch"
-            >
+          const isMultiSelect = !!onVariantQuantityChange
+
+          const cardContent = (
+            <>
               {/* Image area */}
               <div className="relative w-full aspect-square overflow-hidden rounded-md bg-cosmos-washi">
                 {imageUrl ? (
@@ -258,6 +246,41 @@ const VariantSwatchCard: React.FC<VariantSwatchCardProps> = ({
                   </svg>
                 </span>
               )}
+            </>
+          )
+
+          return isMultiSelect ? (
+            <div
+              key={value}
+              className={clx(
+                "relative flex flex-col items-center gap-2 rounded-lg border-2 p-3 transition-all duration-200",
+                selected
+                  ? "border-cosmos-vermilion bg-cosmos-paper shadow-md"
+                  : "border-cosmos-hairline bg-cosmos-paper hover:border-cosmos-graphite hover:shadow-sm",
+                !inStock && "opacity-50",
+                disabled && "cursor-not-allowed",
+              )}
+              data-testid="variant-swatch"
+            >
+              {cardContent}
+            </div>
+          ) : (
+            <button
+              onClick={() => updateOption(option.id, value)}
+              key={value}
+              disabled={disabled}
+              className={clx(
+                "relative flex flex-col items-center gap-2 rounded-lg border-2 p-3 transition-all duration-200",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cosmos-ink focus-visible:ring-offset-2",
+                selected
+                  ? "border-cosmos-vermilion bg-cosmos-paper shadow-md"
+                  : "border-cosmos-hairline bg-cosmos-paper hover:border-cosmos-graphite hover:shadow-sm",
+                !inStock && "opacity-50",
+                disabled && "cursor-not-allowed",
+              )}
+              data-testid="variant-swatch"
+            >
+              {cardContent}
             </button>
           )
         })}

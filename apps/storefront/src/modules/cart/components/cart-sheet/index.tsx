@@ -192,7 +192,7 @@ export default function CartSheet() {
 
                 {/* Checkout button */}
                 <LocalizedClientLink
-                  href={`/${countryCode}/checkout?step=delivery`}
+                  href="/checkout?step=delivery"
                   className={`block w-full text-center py-2.5 rounded-md text-sm font-semibold transition-colors ${
                     termsChecked
                       ? "bg-cosmos-ink text-white hover:bg-cosmos-charcoal"
