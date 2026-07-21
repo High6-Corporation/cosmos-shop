@@ -6,7 +6,7 @@ import { useCartSheet } from "@modules/cart/components/cart-sheet-provider"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@modules/common/components/ui"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import QuickAddModal from "./quick-add-modal"
 
 type CartSheetRecommendedProps = {
@@ -27,72 +27,65 @@ export default function CartSheetRecommended({
   const [adding, setAdding] = useState<Record<string, boolean>>({})
   const [added, setAdded] = useState<Record<string, boolean>>({})
 
-  // Fetch only when the cart item count changes (sheet opens, items added/removed
-  // from elsewhere). Do NOT refetch on every cart object change — quick-add
-  // optimistically removes the added product instead.
-  const prevItemCount = useRef(cart?.items?.length ?? 0)
+  // Fetch once when the sheet opens. No auto-refetch — quick-add
+  // optimistically removes products. User manually refreshes via "See more".
+  const [fetching, setFetching] = useState(false)
+  const fetchedRef = useRef(false)
+
+  const fetchRecommended = useCallback(async () => {
+    if (!cart?.items?.length) return
+    setFetching(true)
+    try {
+      const cartVariantIds = new Set(
+        cart.items?.map((item) => item.variant_id).filter(Boolean) ?? [],
+      )
+
+      const categoryIds = [
+        ...new Set(
+          (cart.items ?? [])
+            .flatMap(
+              (item) =>
+                (item.product as HttpTypes.StoreProduct)?.categories?.map(
+                  (c: { id: string }) => c.id,
+                ) ?? [],
+            )
+            .filter(Boolean),
+        ),
+      ]
+
+      const { response } = await listProducts({
+        countryCode,
+        queryParams: {
+          ...(categoryIds.length > 0
+            ? { category_id: categoryIds as any }
+            : {}),
+          limit: categoryIds.length > 0 ? 20 : 4,
+          fields:
+            "*variants,*variants.calculated_price,*thumbnail,*images,*variants.inventory_quantity,*variants.manage_inventory,*variants.allow_backorder,*options,*options.values",
+        },
+      })
+
+      const recommended = (response.products ?? [])
+        .filter((p) => !p.variants?.some((v) => cartVariantIds.has(v.id)))
+        .slice(0, 4)
+
+      setProducts(recommended)
+    } catch {
+      setProducts([])
+    } finally {
+      setFetching(false)
+    }
+  }, [cart, countryCode])
 
   useEffect(() => {
-    const currentCount = cart?.items?.length ?? 0
-
-    // Only fetch on mount or when items are added/removed externally
-    // (not from our own quick-add which optimistically filters)
-    if (currentCount === 0) {
+    if (fetchedRef.current) return
+    if (!cart?.items?.length) {
       setProducts([])
-      prevItemCount.current = 0
       return
     }
-
-    if (currentCount === prevItemCount.current && products.length > 0) {
-      // Cart count unchanged and we already have products — skip re-fetch
-      return
-    }
-
-    prevItemCount.current = currentCount
-
-    const fetchRecommended = async () => {
-      try {
-        const cartVariantIds = new Set(
-          cart.items?.map((item) => item.variant_id).filter(Boolean) ?? [],
-        )
-
-        const categoryIds = [
-          ...new Set(
-            (cart.items ?? [])
-              .flatMap(
-                (item) =>
-                  (item.product as HttpTypes.StoreProduct)?.categories?.map(
-                    (c: { id: string }) => c.id,
-                  ) ?? [],
-              )
-              .filter(Boolean),
-          ),
-        ]
-
-        const { response } = await listProducts({
-          countryCode,
-          queryParams: {
-            ...(categoryIds.length > 0
-              ? { category_id: categoryIds as any }
-              : {}),
-            limit: categoryIds.length > 0 ? 20 : 4,
-            fields:
-              "*variants.calculated_price,*thumbnail,*images,*variants.inventory_quantity,*variants.manage_inventory,*variants.allow_backorder,*options,*options.values",
-          },
-        })
-
-        const recommended = (response.products ?? [])
-          .filter((p) => !p.variants?.some((v) => cartVariantIds.has(v.id)))
-          .slice(0, 4)
-
-        setProducts(recommended)
-      } catch {
-        setProducts([])
-      }
-    }
-
+    fetchedRef.current = true
     fetchRecommended()
-  }, [cart?.items?.length, countryCode])
+  }, [cart?.items?.length, fetchRecommended])
 
   const isMultiVariant = (product: HttpTypes.StoreProduct) =>
     (product.variants?.length ?? 0) > 1
@@ -153,63 +146,73 @@ export default function CartSheetRecommended({
         <p className="text-xs font-semibold text-cosmos-graphite uppercase tracking-wide mb-3">
           You might also like
         </p>
-        <div className="grid grid-cols-2 gap-3">
-          {products.map((product) => {
-            const productId = product.id!
-            const isAdding = adding[productId]
-            const isAdded = added[productId]
+        <div className="max-h-[400px] overflow-y-auto -mx-1 px-1">
+          <div className="grid grid-cols-2 gap-3">
+            {products.map((product) => {
+              const productId = product.id!
+              const isAdding = adding[productId]
+              const isAdded = added[productId]
 
-            return (
-              <div key={product.id} className="group">
-                <LocalizedClientLink
-                  href={`/products/${product.handle}`}
-                  className="block"
-                >
-                  <div className="aspect-square rounded-md overflow-hidden bg-cosmos-washi mb-1.5">
-                    {product.thumbnail ? (
-                      <img
-                        src={product.thumbnail}
-                        alt={product.title ?? ""}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-cosmos-graphite text-xs">
-                        No image
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-xs font-medium text-cosmos-charcoal truncate group-hover:text-cosmos-ink transition-colors">
-                    {product.title}
-                  </p>
-                  {product.variants?.[0]?.calculated_price?.calculated_amount !=
-                    null && (
-                    <p className="text-xs text-cosmos-graphite">
-                      {new Intl.NumberFormat("en-PH", {
-                        style: "currency",
-                        currency:
-                          product.variants[0].calculated_price.currency_code ??
-                          "PHP",
-                      }).format(
-                        product.variants[0].calculated_price.calculated_amount,
+              return (
+                <div key={product.id} className="group">
+                  <LocalizedClientLink
+                    href={`/products/${product.handle}`}
+                    className="block"
+                  >
+                    <div className="aspect-square rounded-md overflow-hidden bg-cosmos-washi mb-1.5">
+                      {product.thumbnail ? (
+                        <img
+                          src={product.thumbnail}
+                          alt={product.title ?? ""}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-cosmos-graphite text-xs">
+                          No image
+                        </div>
                       )}
+                    </div>
+                    <p className="text-xs font-medium text-cosmos-charcoal truncate group-hover:text-cosmos-ink transition-colors">
+                      {product.title}
                     </p>
-                  )}
-                </LocalizedClientLink>
-                <Button
-                  onClick={() => handleQuickAdd(product)}
-                  size="small"
-                  variant="secondary"
-                  disabled={isAdding}
-                  isLoading={isAdding}
-                  className="w-full mt-1 text-xs h-7"
-                  data-testid={`quick-add-${product.id}`}
-                >
-                  {isAdded ? "✓ Added" : "+ Add"}
-                </Button>
-              </div>
-            )
-          })}
+                    {product.variants?.[0]?.calculated_price
+                      ?.calculated_amount != null && (
+                      <p className="text-xs text-cosmos-graphite">
+                        {new Intl.NumberFormat("en-PH", {
+                          style: "currency",
+                          currency:
+                            product.variants[0].calculated_price
+                              .currency_code ?? "PHP",
+                        }).format(
+                          product.variants[0].calculated_price
+                            .calculated_amount,
+                        )}
+                      </p>
+                    )}
+                  </LocalizedClientLink>
+                  <Button
+                    onClick={() => handleQuickAdd(product)}
+                    size="small"
+                    variant="secondary"
+                    disabled={isAdding}
+                    isLoading={isAdding}
+                    className="w-full mt-1 text-xs h-7"
+                    data-testid={`quick-add-${product.id}`}
+                  >
+                    {isAdded ? "✓ Added" : "+ Add"}
+                  </Button>
+                </div>
+              )
+            })}
+          </div>
         </div>
+        <button
+          onClick={() => fetchRecommended()}
+          disabled={fetching}
+          className="block w-full text-center text-xs text-cosmos-graphite hover:text-cosmos-charcoal mt-3 transition-colors disabled:opacity-50"
+        >
+          {fetching ? "Loading…" : "See more →"}
+        </button>
       </div>
 
       {/* Variant selection modal for multi-variant products */}
