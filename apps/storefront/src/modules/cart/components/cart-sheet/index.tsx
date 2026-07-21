@@ -186,7 +186,6 @@ export default function CartSheet() {
                     <CartSheetRecommended
                       cart={cart}
                       countryCode={countryCode}
-                      onQuickAdd={setQuickAddProduct}
                     />
                   </div>
                 </>
