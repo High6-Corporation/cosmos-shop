@@ -4,6 +4,15 @@ import { HttpTypes } from "@medusajs/types"
 import { clx } from "@modules/common/components/ui"
 import Image from "next/image"
 import React from "react"
+import QuantityStepper from "./quantity-stepper"
+
+type VariantMeta = {
+  isEngravable: boolean
+  fee: number
+  threshold: number
+  inStock: boolean | null
+  maxQty: number | null
+}
 
 type VariantSwatchCardProps = {
   option: HttpTypes.StoreProductOption
@@ -14,6 +23,12 @@ type VariantSwatchCardProps = {
   title: string
   disabled: boolean
   "data-testid"?: string
+  // Multi-select mode (all optional — when absent, card behaves as single-select):
+  variantQuantities?: Record<string, number> // variant_id → qty
+  onVariantQuantityChange?: (variantId: string, qty: number) => void
+  variantEngravingTexts?: Record<string, string> // variant_id → engraving text
+  onVariantEngravingTextChange?: (variantId: string, text: string) => void
+  variantMeta?: Record<string, VariantMeta> // variant_id → metadata
 }
 
 /**
@@ -36,6 +51,11 @@ const VariantSwatchCard: React.FC<VariantSwatchCardProps> = ({
   title,
   "data-testid": dataTestId,
   disabled,
+  variantQuantities,
+  onVariantQuantityChange,
+  variantEngravingTexts,
+  onVariantEngravingTextChange,
+  variantMeta,
 }) => {
   // Build a map: option_value → first matching variant
   const valueToVariant = React.useMemo(() => {
@@ -89,8 +109,11 @@ const VariantSwatchCard: React.FC<VariantSwatchCardProps> = ({
       >
         {filteredOptions.map((value) => {
           const imageUrl = resolveImage(value)
-          const selected = value === current
           const inStock = isInStock(value)
+          // Selection: in multi-select mode, qty > 0. In single-select, current match.
+          const selected = onVariantQuantityChange
+            ? (variantQuantities?.[valueToVariant[value]?.id ?? ""] ?? 0) > 0
+            : value === current
 
           return (
             <button
@@ -137,6 +160,78 @@ const VariantSwatchCard: React.FC<VariantSwatchCardProps> = ({
               >
                 {value}
               </span>
+
+              {/* Inline stepper — rendered when multi-select props are provided */}
+              {onVariantQuantityChange &&
+                (() => {
+                  const variant = valueToVariant[value]
+                  const variantId = variant?.id
+                  if (!variantId) return null
+                  const qty = variantQuantities?.[variantId] ?? 0
+                  const meta = variantMeta?.[variantId]
+                  return (
+                    <div
+                      className="w-full mt-1.5"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <QuantityStepper
+                        quantity={qty}
+                        onChange={(newQty) =>
+                          onVariantQuantityChange(variantId, newQty)
+                        }
+                        max={meta?.maxQty ?? null}
+                        disabled={disabled || meta?.inStock === false}
+                        compact
+                        data-testid={`variant-stepper-${variantId}`}
+                      />
+                    </div>
+                  )
+                })()}
+
+              {/* Engraving field — shown when qty > 0 AND variant is engravable */}
+              {onVariantEngravingTextChange &&
+                (() => {
+                  const variant = valueToVariant[value]
+                  const variantId = variant?.id
+                  if (!variantId) return null
+                  const qty = variantQuantities?.[variantId] ?? 0
+                  const meta = variantMeta?.[variantId]
+                  const isEngravable = meta?.isEngravable ?? false
+                  if (qty === 0 || !isEngravable) return null
+                  const text = variantEngravingTexts?.[variantId] ?? ""
+                  return (
+                    <div
+                      className="w-full mt-1.5"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <input
+                        type="text"
+                        value={text}
+                        onChange={(e) =>
+                          onVariantEngravingTextChange(
+                            variantId,
+                            e.target.value,
+                          )
+                        }
+                        placeholder="Engraving text..."
+                        className="w-full text-[11px] px-2 py-1 rounded border border-cosmos-hairline bg-cosmos-paper text-cosmos-charcoal placeholder:text-cosmos-graphite focus:outline-none focus:ring-1 focus:ring-cosmos-ink"
+                        data-testid={`engraving-input-${variantId}`}
+                      />
+                      {meta?.fee !== undefined && meta.fee > 0 && (
+                        <p className="text-[10px] text-cosmos-graphite mt-0.5">
+                          {new Intl.NumberFormat("en-PH", {
+                            style: "currency",
+                            currency: "PHP",
+                          }).format(meta.fee)}
+                          /unit
+                          {meta.threshold > 1 && (
+                            <> — free at {meta.threshold}+ units</>
+                          )}
+                        </p>
+                      )}
+                    </div>
+                  )
+                })()}
 
               {/* Out-of-stock badge */}
               {!inStock && (
