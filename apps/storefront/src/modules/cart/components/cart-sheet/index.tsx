@@ -29,11 +29,12 @@ export default function CartSheet() {
   const currencyCode = cart?.region?.currency_code?.toUpperCase() ?? "PHP"
   const itemCount = cart?.items?.length ?? 0
   const subtotal = cart?.subtotal ?? 0
+  const hasItems = !!(cart && itemCount > 0)
 
   return (
     <Transition show={isSheetOpen} as={Fragment}>
       <Dialog onClose={handleClose} className="relative z-50">
-        {/* Backdrop */}
+        {/* Backdrop — shared */}
         <Transition.Child
           as={Fragment}
           enter="ease-out duration-300"
@@ -49,7 +50,30 @@ export default function CartSheet() {
           />
         </Transition.Child>
 
-        {/* Panel */}
+        {/* Desktop: Recommended products panel — sits to the left of the cart */}
+        {hasItems && (
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-300"
+            enterFrom="translate-x-full"
+            enterTo="translate-x-0"
+            leave="ease-in duration-200"
+            leaveFrom="translate-x-0"
+            leaveTo="translate-x-full"
+          >
+            <div className="hidden min-[1080px]:block fixed right-[28rem] top-0 h-full w-72 bg-cosmos-paper/95 backdrop-blur-sm border-r border-cosmos-hairline shadow-lg z-40 overflow-y-auto">
+              <div className="px-4 pt-16 pb-4">
+                <CartSheetRecommended
+                  cart={cart}
+                  countryCode={countryCode}
+                  showEmptyState={true}
+                />
+              </div>
+            </div>
+          </Transition.Child>
+        )}
+
+        {/* Cart sheet panel */}
         <Transition.Child
           as={Fragment}
           enter="ease-out duration-300"
@@ -59,7 +83,7 @@ export default function CartSheet() {
           leaveFrom="translate-x-0"
           leaveTo="translate-x-full"
         >
-          <Dialog.Panel className="fixed right-0 top-0 h-full w-full max-w-md bg-cosmos-paper shadow-xl flex flex-col">
+          <Dialog.Panel className="fixed right-0 top-0 h-full w-full max-w-md bg-cosmos-paper shadow-xl flex flex-col z-50">
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-cosmos-hairline">
               <Dialog.Title className="text-lg font-semibold text-cosmos-charcoal font-fraunces">
@@ -145,11 +169,13 @@ export default function CartSheet() {
                     ))}
                   </div>
 
-                  {/* Recommended products */}
-                  <CartSheetRecommended
-                    cart={cart}
-                    countryCode={countryCode}
-                  />
+                  {/* Mobile: Recommended products inside scroll body */}
+                  <div className="block min-[1080px]:hidden">
+                    <CartSheetRecommended
+                      cart={cart}
+                      countryCode={countryCode}
+                    />
+                  </div>
                 </>
               )}
             </div>
