@@ -18,6 +18,9 @@ type CartSheetContextValue = {
   refreshCart: () => Promise<void>
   partialFailureMessage: string | null
   setPartialFailureMessage: (msg: string | null) => void
+  quickAddProduct: HttpTypes.StoreProduct | null
+  openQuickAdd: (product: HttpTypes.StoreProduct) => void
+  closeQuickAdd: () => void
 }
 
 const CartSheetContext = createContext<CartSheetContextValue | null>(null)
@@ -41,6 +44,14 @@ export default function CartSheetProvider({
   const [partialFailureMessage, setPartialFailureMessage] = useState<
     string | null
   >(null)
+  const [quickAddProduct, setQuickAddProduct] =
+    useState<HttpTypes.StoreProduct | null>(null)
+
+  const openQuickAdd = useCallback(
+    (product: HttpTypes.StoreProduct) => setQuickAddProduct(product),
+    [],
+  )
+  const closeQuickAdd = useCallback(() => setQuickAddProduct(null), [])
 
   // Sync when server re-renders with fresh data (router-refresh after server actions)
   useEffect(() => {
@@ -73,6 +84,9 @@ export default function CartSheetProvider({
         refreshCart,
         partialFailureMessage,
         setPartialFailureMessage,
+        quickAddProduct,
+        openQuickAdd,
+        closeQuickAdd,
       }}
     >
       {children}

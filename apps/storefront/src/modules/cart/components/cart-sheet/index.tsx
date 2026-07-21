@@ -9,7 +9,6 @@ import { Fragment, useState } from "react"
 import CartSheetItem from "./cart-sheet-item"
 import CartSheetRecommended from "./cart-sheet-recommended"
 import QuickAddModal from "./quick-add-modal"
-import { HttpTypes } from "@medusajs/types"
 
 export default function CartSheet() {
   const {
@@ -18,11 +17,11 @@ export default function CartSheet() {
     closeSheet,
     partialFailureMessage,
     setPartialFailureMessage,
+    quickAddProduct,
+    closeQuickAdd,
   } = useCartSheet()
   const countryCode = useParams().countryCode as string
   const [termsChecked, setTermsChecked] = useState(false)
-  const [quickAddProduct, setQuickAddProduct] =
-    useState<HttpTypes.StoreProduct | null>(null)
 
   // Reset T&C on every close
   const handleClose = () => {
@@ -37,6 +36,14 @@ export default function CartSheet() {
 
   return (
     <>
+      {quickAddProduct && (
+        <QuickAddModal
+          product={quickAddProduct}
+          countryCode={countryCode}
+          open={!!quickAddProduct}
+          onClose={closeQuickAdd}
+        />
+      )}
       <Transition show={isSheetOpen} as={Fragment}>
       <Dialog onClose={handleClose} className="relative z-50">
         {/* Backdrop — shared */}
@@ -72,7 +79,6 @@ export default function CartSheet() {
                   cart={cart}
                   countryCode={countryCode}
                   showEmptyState={true}
-                  onQuickAdd={setQuickAddProduct}
                 />
               </div>
             </div>
@@ -256,15 +262,6 @@ export default function CartSheet() {
         </Transition.Child>
       </Dialog>
     </Transition>
-
-      {quickAddProduct && (
-        <QuickAddModal
-          product={quickAddProduct}
-          countryCode={countryCode}
-          open={!!quickAddProduct}
-          onClose={() => setQuickAddProduct(null)}
-        />
-      )}
     </>
   )
 }

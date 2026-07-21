@@ -1,6 +1,7 @@
 "use client"
 
 import { sdk } from "@lib/config"
+import { useCartSheet } from "@modules/cart/components/cart-sheet-provider"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@modules/common/components/ui"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
@@ -10,15 +11,14 @@ type CartSheetRecommendedProps = {
   cart: HttpTypes.StoreCart | null
   countryCode: string
   showEmptyState?: boolean
-  onQuickAdd: (product: HttpTypes.StoreProduct) => void
 }
 
 export default function CartSheetRecommended({
   cart,
   countryCode,
   showEmptyState,
-  onQuickAdd,
 }: CartSheetRecommendedProps) {
+  const { openQuickAdd } = useCartSheet()
   const [products, setProducts] = useState<HttpTypes.StoreProduct[]>([])
   const [fetching, setFetching] = useState(false)
 
@@ -128,7 +128,7 @@ export default function CartSheetRecommended({
                 <Button
                   onClick={(e) => {
                     e.stopPropagation()
-                    onQuickAdd(product)
+                    openQuickAdd(product)
                   }}
                   size="small"
                   variant="secondary"
