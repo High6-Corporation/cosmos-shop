@@ -6,13 +6,13 @@ import { useCartSheet } from "@modules/cart/components/cart-sheet-provider"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@modules/common/components/ui"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import QuickAddModal from "./quick-add-modal"
 
 type CartSheetRecommendedProps = {
   cart: HttpTypes.StoreCart | null
   countryCode: string
-  showEmptyState?: boolean // when true, renders "Check back soon" instead of null
+  showEmptyState?: boolean
 }
 
 export default function CartSheetRecommended({
@@ -26,11 +26,7 @@ export default function CartSheetRecommended({
     useState<HttpTypes.StoreProduct | null>(null)
   const [adding, setAdding] = useState<Record<string, boolean>>({})
   const [added, setAdded] = useState<Record<string, boolean>>({})
-
-  // Fetch once when the sheet opens. No auto-refetch — quick-add
-  // optimistically removes products. User manually refreshes via "See more".
   const [fetching, setFetching] = useState(false)
-  const fetchedRef = useRef(false)
 
   const fetchRecommended = useCallback(async () => {
     if (!cart?.items?.length) return
@@ -40,26 +36,12 @@ export default function CartSheetRecommended({
         cart.items?.map((item) => item.variant_id).filter(Boolean) ?? [],
       )
 
-      const categoryIds = [
-        ...new Set(
-          (cart.items ?? [])
-            .flatMap(
-              (item) =>
-                (item.product as HttpTypes.StoreProduct)?.categories?.map(
-                  (c: { id: string }) => c.id,
-                ) ?? [],
-            )
-            .filter(Boolean),
-        ),
-      ]
-
+      // Fetch all products (catalog is small — ~11 items).
+      // No category filter — let cartVariantIds exclusion handle relevance.
       const { response } = await listProducts({
         countryCode,
         queryParams: {
-          ...(categoryIds.length > 0
-            ? { category_id: categoryIds as any }
-            : {}),
-          limit: categoryIds.length > 0 ? 20 : 4,
+          limit: 50,
           fields:
             "*variants,*variants.calculated_price,*thumbnail,*images,*variants.inventory_quantity,*variants.manage_inventory,*variants.allow_backorder,*options,*options.values",
         },
@@ -71,35 +53,28 @@ export default function CartSheetRecommended({
 
       setProducts(recommended)
     } catch {
-      setProducts([])
+      // keep current products on fetch failure
     } finally {
       setFetching(false)
     }
   }, [cart, countryCode])
 
+  // Fetch on mount and when cart item count changes
+  const itemCount = cart?.items?.length ?? 0
   useEffect(() => {
-    if (fetchedRef.current) return
-    if (!cart?.items?.length) {
-      setProducts([])
-      return
-    }
-    fetchedRef.current = true
     fetchRecommended()
-  }, [cart?.items?.length, fetchRecommended])
-
-  const isMultiVariant = (product: HttpTypes.StoreProduct) =>
-    (product.variants?.length ?? 0) > 1
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemCount, countryCode])
 
   const handleQuickAdd = async (product: HttpTypes.StoreProduct) => {
     const variant = product.variants?.[0]
     if (!variant?.id) return
 
-    if (isMultiVariant(product)) {
+    if ((product.variants?.length ?? 0) > 1) {
       setModalProduct(product)
       return
     }
 
-    // Single-variant: direct add
     const productId = product.id!
     setAdding((prev) => ({ ...prev, [productId]: true }))
     try {
@@ -109,31 +84,31 @@ export default function CartSheetRecommended({
         countryCode,
       })
       setAdded((prev) => ({ ...prev, [productId]: true }))
-      // Optimistic removal — filter out before refreshCart to avoid stale-cache race
       setProducts((prev) => prev.filter((p) => p.id !== product.id))
       await refreshCart()
       openSheet()
-      setTimeout(() => {
-        setAdded((prev) => ({ ...prev, [productId]: false }))
-      }, 1500)
     } catch {
       setPartialFailureMessage(
         `Couldn't add ${product.title ?? "item"}. Please try again.`,
       )
     } finally {
       setAdding((prev) => ({ ...prev, [productId]: false }))
+      setTimeout(() => {
+        setAdded((prev) => ({ ...prev, [productId]: false }))
+      }, 1500)
     }
   }
 
   if (products.length === 0) {
-    // Desktop panel shows placeholder; mobile hides entirely
     if (showEmptyState) {
       return (
         <div className="mt-4 pt-4 border-t border-cosmos-hairline">
           <p className="text-xs font-semibold text-cosmos-graphite uppercase tracking-wide mb-3">
             You might also like
           </p>
-          <p className="text-xs text-cosmos-graphite italic">Check back soon</p>
+          <p className="text-xs text-cosmos-graphite italic">
+            Check back soon
+          </p>
         </div>
       )
     }
@@ -146,13 +121,10 @@ export default function CartSheetRecommended({
         <p className="text-xs font-semibold text-cosmos-graphite uppercase tracking-wide mb-3">
           You might also like
         </p>
-        <div className="max-h-[400px] overflow-y-auto -mx-1 px-1">
+        <div className="max-h-[400px] overflow-y-auto">
           <div className="grid grid-cols-2 gap-3">
             {products.map((product) => {
               const productId = product.id!
-              const isAdding = adding[productId]
-              const isAdded = added[productId]
-
               return (
                 <div key={product.id} className="group">
                   <LocalizedClientLink
@@ -194,12 +166,12 @@ export default function CartSheetRecommended({
                     onClick={() => handleQuickAdd(product)}
                     size="small"
                     variant="secondary"
-                    disabled={isAdding}
-                    isLoading={isAdding}
+                    disabled={adding[productId]}
+                    isLoading={adding[productId]}
                     className="w-full mt-1 text-xs h-7"
                     data-testid={`quick-add-${product.id}`}
                   >
-                    {isAdded ? "✓ Added" : "+ Add"}
+                    {added[productId] ? "✓ Added" : "+ Add"}
                   </Button>
                 </div>
               )
@@ -215,7 +187,6 @@ export default function CartSheetRecommended({
         </button>
       </div>
 
-      {/* Variant selection modal for multi-variant products */}
       {modalProduct && (
         <QuickAddModal
           product={modalProduct}
