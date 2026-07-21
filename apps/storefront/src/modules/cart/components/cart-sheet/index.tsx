@@ -23,8 +23,9 @@ export default function CartSheet() {
   const countryCode = useParams().countryCode as string
   const [termsChecked, setTermsChecked] = useState(false)
 
-  // Reset T&C on every close
+  // Reset T&C on every close — but don't close if QuickAdd modal is open
   const handleClose = () => {
+    if (quickAddProduct) return
     setTermsChecked(false)
     closeSheet()
   }
