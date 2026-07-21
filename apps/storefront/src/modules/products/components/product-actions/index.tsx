@@ -5,13 +5,15 @@ import { useIntersection } from "@lib/hooks/use-in-view"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@modules/common/components/ui"
 import Divider from "@modules/common/components/divider"
-import OptionSelect from "@modules/products/components/product-actions/option-select"
+import VariantSwatchCard from "@modules/products/components/product-actions/variant-swatch-card"
+import QuantityStepper from "@modules/products/components/product-actions/quantity-stepper"
 import { isEqual } from "lodash"
 import { useParams, usePathname, useSearchParams } from "next/navigation"
 import { useEffect, useMemo, useRef, useState } from "react"
 import ProductPrice from "../product-price"
 import MobileActions from "./mobile-actions"
 import { useRouter } from "next/navigation"
+import EngravingToggle from "../engraving-toggle"
 
 type ProductActionsProps = {
   product: HttpTypes.StoreProduct
@@ -20,7 +22,7 @@ type ProductActionsProps = {
 }
 
 const optionsAsKeymap = (
-  variantOptions: HttpTypes.StoreProductVariant["options"]
+  variantOptions: HttpTypes.StoreProductVariant["options"],
 ) => {
   return variantOptions?.reduce((acc: Record<string, string>, varopt) => {
     if (varopt.option_id) acc[varopt.option_id] = varopt.value
@@ -30,6 +32,7 @@ const optionsAsKeymap = (
 
 export default function ProductActions({
   product,
+  region,
   disabled,
 }: ProductActionsProps) {
   const router = useRouter()
@@ -38,6 +41,7 @@ export default function ProductActions({
 
   const [options, setOptions] = useState<Record<string, string | undefined>>({})
   const [isAdding, setIsAdding] = useState(false)
+  const [quantity, setQuantity] = useState(1)
   const countryCode = useParams().countryCode as string
 
   // If there is only 1 variant, preselect the options
@@ -94,20 +98,25 @@ export default function ProductActions({
 
   // check if the selected variant is in stock
   const inStock = useMemo(() => {
+    // No variant selected yet — neutral
+    if (!selectedVariant) {
+      return null
+    }
+
     // If we don't manage inventory, we can always add to cart
-    if (selectedVariant && !selectedVariant.manage_inventory) {
+    if (!selectedVariant.manage_inventory) {
       return true
     }
 
     // If we allow back orders on the variant, we can add to cart
-    if (selectedVariant?.allow_backorder) {
+    if (selectedVariant.allow_backorder) {
       return true
     }
 
     // If there is inventory available, we can add to cart
     if (
-      selectedVariant?.manage_inventory &&
-      (selectedVariant?.inventory_quantity || 0) > 0
+      selectedVariant.manage_inventory &&
+      (selectedVariant.inventory_quantity || 0) > 0
     ) {
       return true
     }
@@ -115,6 +124,37 @@ export default function ProductActions({
     // Otherwise, we can't add to cart
     return false
   }, [selectedVariant])
+
+  // Compute the max quantity for the stepper
+  const maxQuantity = useMemo(() => {
+    if (!selectedVariant) return null
+    if (!selectedVariant.manage_inventory || selectedVariant.allow_backorder) {
+      return null // unlimited
+    }
+    return selectedVariant.inventory_quantity ?? 0
+  }, [selectedVariant])
+
+  // Reset quantity to 1 when variant changes
+  useEffect(() => {
+    setQuantity(1)
+  }, [selectedVariant?.id])
+
+  // Engraving: read variant-level eligibility + pricing from metadata
+  const [isEngraved, setIsEngraved] = useState(false)
+
+  const engravingMeta = useMemo(() => {
+    const meta = selectedVariant?.metadata ?? {}
+    const isEngravable =
+      meta?.is_engravable === true || meta?.is_engravable === "true"
+    const fee = Number(meta?.engraving_fee) || 0
+    const threshold = Number(meta?.engraving_threshold) || 0
+    return { isEngravable, fee, threshold }
+  }, [selectedVariant])
+
+  // Reset engraving toggle when variant changes
+  useEffect(() => {
+    setIsEngraved(false)
+  }, [selectedVariant?.id])
 
   const actionsRef = useRef<HTMLDivElement>(null)
 
@@ -128,8 +168,11 @@ export default function ProductActions({
 
     await addToCart({
       variantId: selectedVariant.id,
-      quantity: 1,
+      quantity,
       countryCode,
+      ...(engravingMeta.isEngravable && isEngraved
+        ? { metadata: { engraved: true } }
+        : {}),
     })
 
     setIsAdding(false)
@@ -137,15 +180,17 @@ export default function ProductActions({
 
   return (
     <>
-      <div className="flex flex-col gap-y-2" ref={actionsRef}>
+      <div className="flex flex-col gap-y-4" ref={actionsRef}>
         <div>
           {(product.variants?.length ?? 0) > 1 && (
-            <div className="flex flex-col gap-y-4">
+            <div className="flex flex-col gap-y-5">
               {(product.options || []).map((option) => {
                 return (
                   <div key={option.id}>
-                    <OptionSelect
+                    <VariantSwatchCard
                       option={option}
+                      variants={product.variants ?? []}
+                      productImages={product.images ?? null}
                       current={options[option.id]}
                       updateOption={setOptionValue}
                       title={option.title ?? ""}
@@ -162,26 +207,89 @@ export default function ProductActions({
 
         <ProductPrice product={product} variant={selectedVariant} />
 
+        <QuantityStepper
+          quantity={quantity}
+          onChange={setQuantity}
+          max={maxQuantity}
+          disabled={(!selectedVariant || inStock === false) ?? false}
+          data-testid="product-quantity-stepper"
+        />
+
+        {isEngraved &&
+          engravingMeta.fee > 0 &&
+          selectedVariant?.calculated_price?.calculated_amount != null && (
+            <p
+              className="text-sm text-cosmos-graphite"
+              data-testid="engraved-price-breakdown"
+            >
+              {new Intl.NumberFormat("en-PH", {
+                style: "currency",
+                currency: region?.currency_code ?? "PHP",
+              }).format(
+                selectedVariant.calculated_price.calculated_amount,
+              )}{" "}
+              +{" "}
+              {new Intl.NumberFormat("en-PH", {
+                style: "currency",
+                currency: region?.currency_code ?? "PHP",
+              }).format(engravingMeta.fee)}{" "}
+              engraving ={" "}
+              {new Intl.NumberFormat("en-PH", {
+                style: "currency",
+                currency: region?.currency_code ?? "PHP",
+              }).format(
+                selectedVariant.calculated_price.calculated_amount +
+                  engravingMeta.fee,
+              )}{" "}
+              per unit
+            </p>
+          )}
+
+        <EngravingToggle
+          isEngravable={engravingMeta.isEngravable}
+          fee={engravingMeta.fee}
+          threshold={engravingMeta.threshold}
+          currencyCode={region?.currency_code ?? "USD"}
+          engraved={isEngraved}
+          onToggle={setIsEngraved}
+          disabled={!!disabled || isAdding}
+        />
+
         <Button
           onClick={handleAddToCart}
           disabled={
-            !inStock ||
             !selectedVariant ||
+            inStock === false ||
             !!disabled ||
             isAdding ||
             !isValidVariant
           }
           variant="primary"
-          className="w-full h-10"
+          className="w-full h-10 bg-cosmos-ink hover:bg-cosmos-charcoal text-white"
           isLoading={isAdding}
           data-testid="add-product-button"
         >
-          {!selectedVariant && !options
+          {!selectedVariant
             ? "Select variant"
-            : !inStock || !isValidVariant
-            ? "Out of stock"
-            : "Add to cart"}
+            : !isValidVariant
+              ? "Select variant"
+              : inStock === false
+                ? "Out of stock"
+                : `Add to cart — ${quantity}`}
         </Button>
+
+        {selectedVariant?.manage_inventory &&
+          selectedVariant.inventory_quantity != null && (
+            <p
+              className="text-sm text-cosmos-graphite text-center"
+              data-testid="inventory-count"
+            >
+              {inStock === false
+                ? "Out of stock"
+                : `${selectedVariant.inventory_quantity} in stock`}
+            </p>
+          )}
+
         <MobileActions
           product={product}
           variant={selectedVariant}

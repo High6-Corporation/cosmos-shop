@@ -19,7 +19,7 @@ export const retrieveOrder = async (id: string) => {
       method: "GET",
       query: {
         fields:
-          "*payment_collections.payments,*items,*items.metadata,*items.variant,*items.product",
+          "*payment_collections.payments,*items,*items.metadata,*items.variant,*items.variant.images,*items.product",
       },
       headers,
       next,
@@ -32,7 +32,7 @@ export const retrieveOrder = async (id: string) => {
 export const listOrders = async (
   limit: number = 10,
   offset: number = 0,
-  filters?: Record<string, unknown>
+  filters?: Record<string, unknown>,
 ) => {
   const headers = {
     ...(await getAuthHeaders()),
@@ -49,7 +49,8 @@ export const listOrders = async (
         limit,
         offset,
         order: "-created_at",
-        fields: "*items,+items.metadata,*items.variant,*items.product",
+        fields:
+          "*items,+items.metadata,*items.variant,*items.variant.images,*items.product",
         ...filters,
       },
       headers,
@@ -66,7 +67,7 @@ export const createTransferRequest = async (
     error: string | null
     order: HttpTypes.StoreOrder | null
   },
-  formData: FormData
+  formData: FormData,
 ): Promise<{
   success: boolean
   error: string | null
@@ -87,7 +88,7 @@ export const createTransferRequest = async (
       {
         fields: "id, email",
       },
-      headers
+      headers,
     )
     .then(({ order }) => ({ success: true, error: null, order }))
     .catch((err) => ({ success: false, error: err.message, order: null }))

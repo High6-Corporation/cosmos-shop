@@ -5,7 +5,7 @@
  * or edit roles freely — this file is marked merge=ours in .gitattributes so
  * template pulls never overwrite local changes.
  *
- * Roles marked ⚠️ NOT YET VERIFIED — BENCHED are not selectable in the UI
+ * Roles marked "not yet available" in the widget are not selectable in the UI
  * (filtered by the assignable-roles endpoint). Verify them in a browser
  * before removing the bench flag.
  *
@@ -18,10 +18,11 @@ import { allCrud, readWrite, readOnly } from "./seed-rbac-core";
 // Re-export helpers for convenience (used by seed-rbac.ts entrypoint)
 export { allCrud, readWrite, readOnly };
 
-export const BOOTSTRAP_USER_ROLES: Array<{ email: string; roleName: string }> = [
-  { email: "superadmin@cosmosshop.dev", roleName: "Super Admin" },
-  { email: "owner@cosmosshop.dev", roleName: "Store Owner" },
-];
+export const BOOTSTRAP_USER_ROLES: Array<{ email: string; roleName: string }> =
+  [
+    { email: "superadmin@cosmosshop.dev", roleName: "Super Admin" },
+    { email: "owner@cosmosshop.dev", roleName: "Store Owner" },
+  ];
 
 // ---------------------------------------------------------------------------
 // Role definitions
@@ -121,7 +122,7 @@ export const ROLE_DEFINITIONS: RoleDef[] = [
   {
     name: "Operations Manager",
     description:
-      "⚠️ NOT YET VERIFIED — BENCHED. Manages orders, products, inventory, " +
+      "Manages orders, products, inventory, " +
       "and customers. Read-only on pricing and promotions. " +
       "No user management or settings access.",
     metadata: { assignable: false },
@@ -139,7 +140,7 @@ export const ROLE_DEFINITIONS: RoleDef[] = [
   {
     name: "Order & Fulfillment Staff",
     description:
-      "✅ VERIFIED. Processes orders and fulfillments. " +
+      "Processes orders and fulfillments. " +
       "Read-only on products, inventory, and customers. " +
       "Can create fulfillments and view shipping options and stock locations. " +
       "No access to pricing, promotions, or user management.",
@@ -194,7 +195,7 @@ export const ROLE_DEFINITIONS: RoleDef[] = [
   {
     name: "Catalog / Product Manager",
     description:
-      "⚠️ NOT YET VERIFIED — BENCHED. Full access to products, categories, " +
+      "Full access to products, categories, " +
       "collections, inventory, pricing, and promotions. " +
       "Read-only on orders. No user management or settings access.",
     metadata: { assignable: false },
@@ -217,7 +218,7 @@ export const ROLE_DEFINITIONS: RoleDef[] = [
   {
     name: "Marketing",
     description:
-      "⚠️ NOT YET VERIFIED — BENCHED. Full access to price lists and promotions. " +
+      "Full access to price lists and promotions. " +
       "Read-only on orders, products, and inventory. " +
       "No user management or settings access.",
     metadata: { assignable: false },
@@ -234,7 +235,7 @@ export const ROLE_DEFINITIONS: RoleDef[] = [
   {
     name: "Customer Support",
     description:
-      "✅ VERIFIED. View and update orders (no delete), manage customers. " +
+      "View and update orders (no delete), manage customers. " +
       "Can issue refunds. Read-only on products and inventory. " +
       "View-only access to Return Reasons and Refund Reasons settings. " +
       "No access to pricing, promotions, or user management.",
@@ -269,7 +270,7 @@ export const ROLE_DEFINITIONS: RoleDef[] = [
   {
     name: "Read-Only / Auditor",
     description:
-      "✅ VERIFIED. Read-only access across all commerce resources and settings. " +
+      "Read-only access across all commerce resources and settings. " +
       "Can view orders, products, inventory, customers, pricing, and promotions. " +
       "No write, create, or delete access on any resource. " +
       "Assigned manually like every other role — invites now require an explicit role per #81.",
@@ -350,7 +351,7 @@ export const ROLE_DEFINITIONS: RoleDef[] = [
   {
     name: "Developer / Platform Support",
     description:
-      "✅ VERIFIED. Manages technical settings: API keys, webhooks, RBAC roles " +
+      "Manages technical settings: API keys, webhooks, RBAC roles " +
       "and policies, sales channels, payments, and workflow executions. " +
       "Read-only access to orders, products, customers, and inventory for debugging. " +
       "Can create and delete API keys, roles, and sales channels. " +
@@ -412,4 +413,3 @@ export const ROLE_DEFINITIONS: RoleDef[] = [
 // ---------------------------------------------------------------------------
 // Seed function — idempotent, safe to call repeatedly
 // ---------------------------------------------------------------------------
-

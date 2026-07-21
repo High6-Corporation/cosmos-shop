@@ -2,6 +2,7 @@
 
 import { Table, Text, clx } from "@modules/common/components/ui"
 import { updateLineItem } from "@lib/data/cart"
+import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
 import CartItemSelect from "@modules/cart/components/cart-item-select"
 import ErrorMessage from "@modules/checkout/components/error-message"
@@ -23,6 +24,12 @@ type ItemProps = {
 const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
   const [updating, setUpdating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [engravedText, setEngravedText] = useState(
+    (item.metadata?.engraved_text as string) ?? "",
+  )
+
+  const isEngraved =
+    item.metadata?.engraved === true || item.metadata?.engraved === "true"
 
   const changeQuantity = async (quantity: number) => {
     setError(null)
@@ -38,6 +45,19 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
       .finally(() => {
         setUpdating(false)
       })
+  }
+
+  const handleEngravedTextChange = async (text: string) => {
+    setEngravedText(text)
+
+    // Persist to line-item metadata (debounced effect could be added later)
+    await updateLineItem({
+      lineId: item.id,
+      quantity: item.quantity,
+      metadata: { ...item.metadata, engraved_text: text },
+    }).catch(() => {
+      // Silently fail — user can re-type
+    })
   }
 
   // TODO: Update this to grab the actual max inventory
@@ -56,7 +76,11 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
         >
           <Thumbnail
             thumbnail={item.thumbnail}
-            images={item.variant?.product?.images}
+            images={
+              item.variant?.images?.length
+                ? item.variant.images
+                : item.variant?.product?.images
+            }
             size="square"
           />
         </LocalizedClientLink>
@@ -70,6 +94,21 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
           {item.product_title}
         </Text>
         <LineItemOptions variant={item.variant} data-testid="product-variant" />
+        {type === "full" && isEngraved && (
+          <div className="mt-2">
+            <label className="block text-xs font-medium text-ui-fg-muted mb-1">
+              Engraving text <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={engravedText}
+              onChange={(e) => handleEngravedTextChange(e.target.value)}
+              placeholder="Enter text to engrave..."
+              className="w-full max-w-xs rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-gray-900"
+              data-testid="engraved-text-input"
+            />
+          </div>
+        )}
       </Table.Cell>
 
       {type === "full" && (
@@ -91,7 +130,7 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
                   <option value={i + 1} key={i}>
                     {i + 1}
                   </option>
-                )
+                ),
               )}
 
               <option value={1} key={1}>
@@ -111,6 +150,72 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
             style="tight"
             currencyCode={currencyCode}
           />
+          {isEngraved &&
+            (() => {
+              const feePerUnit =
+                Number(item.variant?.metadata?.engraving_fee) || 0
+              const threshold =
+                Number(item.variant?.metadata?.engraving_threshold) || 0
+              const unitPrice = item.unit_price ?? 0
+              const isFree = threshold > 1 && item.quantity >= threshold
+              // When fee is waived (at threshold), unitPrice IS the base price
+              // (the subscriber doesn't add the fee). Only subtract in the
+              // under-threshold case where the fee was actually applied.
+              const basePrice = isFree
+                ? unitPrice
+                : feePerUnit > 0
+                  ? unitPrice - feePerUnit
+                  : unitPrice
+
+              return (
+                <p
+                  className="text-xs text-ui-fg-muted mt-0.5 max-w-[160px]"
+                  data-testid="engraved-price-breakdown"
+                >
+                  {isFree ? (
+                    <>
+                      {convertToLocale({
+                        amount: basePrice,
+                        currency_code: currencyCode,
+                      })}{" "}
+                      +{" "}
+                      {convertToLocale({
+                        amount: 0,
+                        currency_code: currencyCode,
+                      })}{" "}
+                      engraving{" "}
+                      <span className="text-green-600">
+                        (free at {threshold}+)
+                      </span>{" "}
+                      ={" "}
+                      {convertToLocale({
+                        amount: basePrice,
+                        currency_code: currencyCode,
+                      })}
+                      /unit
+                    </>
+                  ) : (
+                    <>
+                      {convertToLocale({
+                        amount: basePrice,
+                        currency_code: currencyCode,
+                      })}{" "}
+                      +{" "}
+                      {convertToLocale({
+                        amount: feePerUnit,
+                        currency_code: currencyCode,
+                      })}{" "}
+                      engraving ={" "}
+                      {convertToLocale({
+                        amount: unitPrice,
+                        currency_code: currencyCode,
+                      })}
+                      /unit
+                    </>
+                  )}
+                </p>
+              )
+            })()}
         </Table.Cell>
       )}
 
@@ -135,6 +240,30 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
             style="tight"
             currencyCode={currencyCode}
           />
+          {type === "full" &&
+            isEngraved &&
+            (() => {
+              const unitPrice = item.unit_price ?? 0
+              const quantity = item.quantity ?? 0
+              const lineTotal = item.total ?? unitPrice * quantity
+
+              return (
+                <p
+                  className="text-[10px] text-ui-fg-muted mt-0.5 whitespace-nowrap"
+                  data-testid="engraved-line-total-breakdown"
+                >
+                  {convertToLocale({
+                    amount: unitPrice,
+                    currency_code: currencyCode,
+                  })}{" "}
+                  × {quantity} ={" "}
+                  {convertToLocale({
+                    amount: lineTotal,
+                    currency_code: currencyCode,
+                  })}
+                </p>
+              )
+            })()}
         </span>
       </Table.Cell>
     </Table.Row>

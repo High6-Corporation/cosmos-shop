@@ -57,7 +57,7 @@ const OptionsPicker = ({
   return (
     <div className="flex flex-col gap-y-4">
       <div className="flex items-center justify-between px-1">
-        <span className="txt-compact-small-plus text-ui-fg-subtle">
+        <span className="txt-compact-small-plus text-cosmos-charcoal font-medium">
           Options
         </span>
       </div>
@@ -76,7 +76,7 @@ const OptionsPicker = ({
               }))
               .filter(
                 (value): value is { id: string; label: string } =>
-                  !!value.id && !!value.label
+                  !!value.id && !!value.label,
               ) || []
 
           if (!values.length) {
@@ -94,7 +94,7 @@ const OptionsPicker = ({
 
           const isOpen = openItems.includes(option.id)
           const selectedCount = values.filter((value) =>
-            selectedValueIds.includes(value.id)
+            selectedValueIds.includes(value.id),
           ).length
 
           return (
@@ -106,19 +106,19 @@ const OptionsPicker = ({
               <Accordion.Header>
                 <Accordion.Trigger className="flex w-full items-center justify-between py-3 text-left">
                   <div className="flex items-center gap-2">
-                    <span className="txt-compact-small-plus text-ui-fg-base">
+                    <span className="txt-compact-small-plus text-cosmos-charcoal">
                       {option.title || "Option"}
                     </span>
-                    <span className="txt-compact-small-plus text-ui-fg-muted">
+                    <span className="txt-compact-small-plus text-cosmos-graphite">
                       ({selectedCount})
                     </span>
                   </div>
                   <span
                     className={clsx(
-                      "flex h-7 w-7 items-center justify-center text-ui-fg-muted transition-transform duration-150",
+                      "flex h-7 w-7 items-center justify-center text-cosmos-graphite transition-transform duration-150",
                       {
                         "rotate-180": isOpen,
-                      }
+                      },
                     )}
                   >
                     <ChevronDownMini />
@@ -135,13 +135,13 @@ const OptionsPicker = ({
                         key={value.id}
                         onClick={() => toggleValue(value.id)}
                         className={clsx(
-                          "border-ui-border-base border text-small-regular h-10 rounded-rounded px-3 flex items-center transition-colors duration-150",
+                          "border text-small-regular h-10 rounded-md px-3 flex items-center transition-colors duration-150",
                           {
-                            "border-ui-border-interactive text-ui-fg-base":
+                            "border-cosmos-vermilion bg-cosmos-vermilion/5 text-cosmos-charcoal font-medium":
                               isSelected,
-                            "text-ui-fg-muted hover:text-ui-fg-base":
+                            "border-cosmos-hairline text-cosmos-graphite hover:border-cosmos-graphite hover:text-cosmos-charcoal":
                               !isSelected,
-                          }
+                          },
                         )}
                         aria-pressed={isSelected}
                       >

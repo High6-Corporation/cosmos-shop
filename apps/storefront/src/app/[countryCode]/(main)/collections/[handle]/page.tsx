@@ -7,6 +7,8 @@ import { StoreCollection, StoreRegion } from "@medusajs/types"
 import CollectionTemplate from "@modules/collections/templates"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 import { parseOptionValueIds } from "@lib/util/product-option-filters"
+export const dynamic = 'force-dynamic'
+
 
 type Props = {
   params: Promise<{ handle: string; countryCode: string }>
@@ -63,7 +65,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   }
 
   const metadata = {
-    title: `${collection.title} | Medusa Store`,
+    title: `${collection.title} | Cosmos Bazaar`,
     description: `${collection.title} collection`,
   } as Metadata
 

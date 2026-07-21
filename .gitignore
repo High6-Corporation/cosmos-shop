@@ -56,3 +56,4 @@ ehthumbs.db
 Thumbs.db
 **/.DS_Store
 graphify-out/
+docs/cosmos/misc/*

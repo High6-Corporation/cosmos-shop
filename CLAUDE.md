@@ -11,7 +11,7 @@ This is a **fresh fork** — no client-specific features have been built yet. Th
 
 ## AI Tooling
 
-- **Graphify** — knowledge graph index of the repo. Run `/graphify` to query the codebase structure. Use `graphify query "<question>"` for architecture and data-flow questions before reading raw files.
+- **Graphify** — knowledge graph index of the repo. Run `/graphify` to query the codebase structure. Use `graphify query "<question>"` for architecture and data-flow questions before reading raw files. **⚠️ Always `cd` into the project root before `graphify update`** — running it from a parent directory (e.g. `~/work`) will silently re-index every project into a single bloated graph, corrupting both this project's index and the shared multi-project graph at the work-root level.
 - **Engram** — persistent memory across sessions. Project-scoped to `cosmos-shop` (`.engram/config.json`). Saves decisions, bugs, discoveries, and conventions automatically.
 
 ## Skills

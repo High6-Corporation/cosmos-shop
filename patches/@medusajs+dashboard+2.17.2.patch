@@ -39,8 +39,49 @@ index 1bfa154..30bd040 100644
      },
      [isRbacEnabled, permissionsMap]
    );
+diff --git a/node_modules/@medusajs/dashboard/dist/product-create-UME252NQ.mjs b/node_modules/@medusajs/dashboard/dist/product-create-UME252NQ.mjs
+index 01affcb..0b93a9f 100644
+--- a/node_modules/@medusajs/dashboard/dist/product-create-UME252NQ.mjs
++++ b/node_modules/@medusajs/dashboard/dist/product-create-UME252NQ.mjs
+@@ -887,7 +887,8 @@ var ProductCreateVariantsSection = ({
+       /* @__PURE__ */ jsxs3("div", { className: "flex flex-col gap-y-6", children: [
+         /* @__PURE__ */ jsxs3("div", { className: "flex flex-col", children: [
+           /* @__PURE__ */ jsx3(Label, { weight: "plus", children: t("products.create.variants.productOptions.label") }),
+-          /* @__PURE__ */ jsx3(Hint, { children: t("products.create.variants.productOptions.hint") })
++          /* @__PURE__ */ jsx3(Hint, { children: t("products.create.variants.productOptions.hint") }),
++          /* @__PURE__ */ jsx3(Hint, { className: "text-ui-fg-interactive", children: "You can type a custom name to create a new option." })
+         ] }),
+         showInvalidOptionsMessage && /* @__PURE__ */ jsx3(Alert, { dismissible: true, variant: "error", children: t("products.create.errors.options") }),
+         /* @__PURE__ */ jsx3(
+@@ -944,7 +945,8 @@ var ProductCreateVariantsSection = ({
+       watchedOptions.length > 0 && /* @__PURE__ */ jsxs3("div", { className: "flex flex-col gap-y-4", children: [
+         /* @__PURE__ */ jsxs3("div", { className: "flex flex-col", children: [
+           /* @__PURE__ */ jsx3(Label, { weight: "plus", children: t("fields.values") }),
+-          /* @__PURE__ */ jsx3(Hint, { children: t("products.create.variants.selectValuesHint") })
++          /* @__PURE__ */ jsx3(Hint, { children: t("products.create.variants.selectValuesHint") }),
++          /* @__PURE__ */ jsx3(Hint, { className: "text-ui-fg-interactive", children: "You can type a custom value to create a new one." })
+         ] }),
+         /* @__PURE__ */ jsx3("div", { className: "flex flex-col gap-y-3", children: watchedOptions.map((opt, index) => {
+           if (opt.id) {
+@@ -980,7 +982,15 @@ var ProductCreateVariantsSection = ({
+                   placeholder: t(
+                     "products.fields.options.variantionsPlaceholder"
+                   ),
+-                  displayMode: "chips"
++                  displayMode: "chips",
++                  shouldAlwaysShowCreateOption: true,
++                  onCreateOption: async (values) => {
++                    const newValueName = values[values.length - 1]?.trim();
++                    if (newValueName && opt.id) {
++                      const currentValueIds = opt.value_ids || [];
++                      handleValueChange(opt.id, [...currentValueIds, newValueName]);
++                    }
++                  }
+                 }
+               )
+             ] }, opt.id);
 diff --git a/node_modules/@medusajs/dashboard/dist/role-detail-C65BMGLE.mjs b/node_modules/@medusajs/dashboard/dist/role-detail-C65BMGLE.mjs
-index 483215c..2c94348 100644
+index 483215c..950cc79 100644
 --- a/node_modules/@medusajs/dashboard/dist/role-detail-C65BMGLE.mjs
 +++ b/node_modules/@medusajs/dashboard/dist/role-detail-C65BMGLE.mjs
 @@ -317,7 +317,7 @@ var RoleUsersSection = ({ role }) => {
@@ -52,15 +93,6 @@ index 483215c..2c94348 100644
              shortcut: "r"
            }
          ] : void 0,
-@@ -364,7 +364,7 @@ var RoleUserActions = ({
-           actions: [
-             {
-               icon: /* @__PURE__ */ jsx3(Trash2, {}),
--              label: t("actions.remove"),
-+              label: t("actions.remove"),
-               onClick: handleRemove
-             }
-           ]
 diff --git a/node_modules/@medusajs/dashboard/dist/user-invite-QUU4SWDI.mjs b/node_modules/@medusajs/dashboard/dist/user-invite-QUU4SWDI.mjs
 index 9354ca8..2317789 100644
 --- a/node_modules/@medusajs/dashboard/dist/user-invite-QUU4SWDI.mjs
@@ -100,3 +132,57 @@ index 160feab..a6a1ff7 100644
                                    </Select.Content>
                                  </Select>
                                </Form.Control>
+diff --git a/node_modules/@medusajs/dashboard/src/routes/products/product-create/components/product-create-details-form/components/product-create-details-variant-section/product-create-details-variant-section.tsx b/node_modules/@medusajs/dashboard/src/routes/products/product-create/components/product-create-details-form/components/product-create-details-variant-section/product-create-details-variant-section.tsx
+index e7e138a..a397735 100644
+--- a/node_modules/@medusajs/dashboard/src/routes/products/product-create/components/product-create-details-form/components/product-create-details-variant-section/product-create-details-variant-section.tsx
++++ b/node_modules/@medusajs/dashboard/src/routes/products/product-create/components/product-create-details-form/components/product-create-details-variant-section/product-create-details-variant-section.tsx
+@@ -461,6 +461,9 @@ export const ProductCreateVariantsSection = ({
+                 {t("products.create.variants.productOptions.label")}
+               </Label>
+               <Hint>{t("products.create.variants.productOptions.hint")}</Hint>
++              <Hint className="text-ui-fg-interactive">
++                You can type a custom name to create a new option.
++              </Hint>
+             </div>
+             {showInvalidOptionsMessage && (
+               <Alert dismissible variant="error">
+@@ -527,6 +530,9 @@ export const ProductCreateVariantsSection = ({
+               <div className="flex flex-col">
+                 <Label weight="plus">{t("fields.values")}</Label>
+                 <Hint>{t("products.create.variants.selectValuesHint")}</Hint>
++                <Hint className="text-ui-fg-interactive">
++                  You can type a custom value to create a new one.
++                </Hint>
+               </div>
+               <div className="flex flex-col gap-y-3">
+                 {watchedOptions.map((opt, index) => {
+@@ -570,17 +576,18 @@ export const ProductCreateVariantsSection = ({
+                           onChange={(value) =>
+                             handleValueChange(opt.id!, value as string[])
+                           }
+-                          // onCreateOption={async (values) => {
+-                          //   const newValueName =
+-                          //     values[values.length - 1]?.trim()
+-                          //   if (newValueName && opt.id) {
+-                          //     const currentValueIds = opt.value_ids || []
+-                          //     handleValueChange(opt.id, [
+-                          //       ...currentValueIds,
+-                          //       newValueName,
+-                          //     ])
+-                          //   }
+-                          // }}
++                          onCreateOption={async (values) => {
++                            const newValueName =
++                              values[values.length - 1]?.trim()
++                            if (newValueName && opt.id) {
++                              const currentValueIds = opt.value_ids || []
++                              handleValueChange(opt.id, [
++                                ...currentValueIds,
++                                newValueName,
++                              ])
++                            }
++                          }}
++                          shouldAlwaysShowCreateOption
+                           options={valueOptions}
+                           placeholder={t(
+                             "products.fields.options.variantionsPlaceholder"

@@ -24,7 +24,7 @@ import { getLocale } from "./locale-actions"
 export async function retrieveCart(cartId?: string, fields?: string) {
   const id = cartId || (await getCartId())
   fields ??=
-    "*items, *region, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name"
+    "*items, *region, *items.product, *items.variant, *items.variant.images, *items.variant.metadata, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name"
 
   if (!id) {
     return null
@@ -70,7 +70,7 @@ export async function getOrSetCart(countryCode: string) {
     const cartResp = await sdk.store.cart.create(
       { region_id: region.id, locale: locale || undefined },
       {},
-      headers
+      headers,
     )
     cart = cartResp.cart
 
@@ -118,10 +118,12 @@ export async function addToCart({
   variantId,
   quantity,
   countryCode,
+  metadata,
 }: {
   variantId: string
   quantity: number
   countryCode: string
+  metadata?: Record<string, unknown>
 }) {
   if (!variantId) {
     throw new Error("Missing variant ID when adding to cart")
@@ -143,9 +145,10 @@ export async function addToCart({
       {
         variant_id: variantId,
         quantity,
+        ...(metadata ? { metadata } : {}),
       },
       {},
-      headers
+      headers,
     )
     .then(async () => {
       const cartCacheTag = await getCacheTag("carts")
@@ -160,9 +163,11 @@ export async function addToCart({
 export async function updateLineItem({
   lineId,
   quantity,
+  metadata,
 }: {
   lineId: string
   quantity: number
+  metadata?: Record<string, unknown>
 }) {
   if (!lineId) {
     throw new Error("Missing lineItem ID when updating line item")
@@ -178,8 +183,13 @@ export async function updateLineItem({
     ...(await getAuthHeaders()),
   }
 
+  const body: HttpTypes.StoreUpdateCartLineItem = { quantity }
+  if (metadata !== undefined) {
+    body.metadata = metadata
+  }
+
   await sdk.store.cart
-    .updateLineItem(cartId, lineId, { quantity }, {}, headers)
+    .updateLineItem(cartId, lineId, body, {}, headers)
     .then(async () => {
       const cartCacheTag = await getCacheTag("carts")
       revalidateTag(cartCacheTag)
@@ -239,7 +249,7 @@ export async function setShippingMethod({
 
 export async function initiatePaymentSession(
   cart: HttpTypes.StoreCart,
-  data: HttpTypes.StoreInitializePaymentSession
+  data: HttpTypes.StoreInitializePaymentSession,
 ) {
   const headers = {
     ...(await getAuthHeaders()),
@@ -303,7 +313,7 @@ export async function removeDiscount(code: string) {
 
 export async function removeGiftCard(
   codeToRemove: string,
-  giftCards: any[]
+  giftCards: any[],
   // giftCards: GiftCard[]
 ) {
   //   const cartId = getCartId()
@@ -323,7 +333,7 @@ export async function removeGiftCard(
 
 export async function submitPromotionForm(
   currentState: unknown,
-  formData: FormData
+  formData: FormData,
 ) {
   const code = formData.get("code") as string
   try {
@@ -382,7 +392,7 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
   }
 
   redirect(
-    `/${formData.get("shipping_address.country_code")}/checkout?step=delivery`
+    `/${formData.get("shipping_address.country_code")}/checkout?step=delivery`,
   )
 }
 

@@ -2,11 +2,21 @@ import { Metadata } from "next"
 import { notFound } from "next/navigation"
 
 import { getCategoryByHandle, listCategories } from "@lib/data/categories"
+import { listCollections } from "@lib/data/collections"
 import { listRegions } from "@lib/data/regions"
 import { HttpTypes, StoreRegion } from "@medusajs/types"
 import CategoryTemplate from "@modules/categories/templates"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 import { parseOptionValueIds } from "@lib/util/product-option-filters"
+export const dynamic = "force-dynamic"
+
+const PLACEHOLDER = new Set([
+  "pants",
+  "merch",
+  "refill",
+  "shirts",
+  "sweatshirts",
+])
 
 type Props = {
   params: Promise<{ category: string[]; countryCode: string }>
@@ -27,11 +37,11 @@ export async function generateStaticParams() {
   }
 
   const countryCodes = await listRegions().then((regions: StoreRegion[]) =>
-    regions?.map((r) => r.countries?.map((c) => c.iso_2)).flat()
+    regions?.map((r) => r.countries?.map((c) => c.iso_2)).flat(),
   )
 
   const categoryHandles = product_categories.map(
-    (category: HttpTypes.StoreProductCategory) => category.handle
+    (category: HttpTypes.StoreProductCategory) => category.handle,
   )
 
   const staticParams = countryCodes
@@ -39,7 +49,7 @@ export async function generateStaticParams() {
       categoryHandles.map((handle: string) => ({
         countryCode,
         category: [handle],
-      }))
+      })),
     )
     .flat()
 
@@ -51,12 +61,12 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   try {
     const productCategory = await getCategoryByHandle(params.category)
 
-    const title = productCategory.name + " | Medusa Store"
+    const title = productCategory.name + " | Cosmos Bazaar"
 
     const description = productCategory.description ?? `${title} category.`
 
     return {
-      title: `${title} | Medusa Store`,
+      title: `${title} | Cosmos Bazaar`,
       description,
       alternates: {
         canonical: `${params.category.join("/")}`,
@@ -73,11 +83,30 @@ export default async function CategoryPage(props: Props) {
   const { sortBy, page } = searchParams
   const optionValueIds = parseOptionValueIds(searchParams)
 
-  const productCategory = await getCategoryByHandle(params.category)
+  const [productCategory, allCats, { collections }] = await Promise.all([
+    getCategoryByHandle(params.category),
+    listCategories(),
+    listCollections({ fields: "id, handle, title" }),
+  ])
 
   if (!productCategory) {
     notFound()
   }
+
+  const categoryPills = (allCats || [])
+    .filter(
+      (c) =>
+        c.handle &&
+        !PLACEHOLDER.has(c.handle.toLowerCase()) &&
+        !c.parent_category,
+    )
+    .slice(0, 8)
+    .map((c) => ({ key: c.handle!, label: c.name }))
+
+  const collectionPills = (collections || [])
+    .filter((c) => c.handle && c.title)
+    .slice(0, 6)
+    .map((c) => ({ key: c.handle!, label: c.title }))
 
   return (
     <CategoryTemplate
@@ -86,6 +115,8 @@ export default async function CategoryPage(props: Props) {
       page={page}
       countryCode={params.countryCode}
       optionValueIds={optionValueIds}
+      allCategories={categoryPills}
+      collections={collectionPills}
     />
   )
 }

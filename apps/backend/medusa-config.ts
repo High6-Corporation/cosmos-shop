@@ -3,6 +3,9 @@ import { loadEnv, defineConfig, Modules } from "@medusajs/framework/utils";
 loadEnv(process.env.NODE_ENV || "development", process.cwd());
 
 module.exports = defineConfig({
+  admin: {
+    maxUploadFileSize: 5 * 1024 * 1024, // 5MB
+  },
   projectConfig: {
     databaseUrl: process.env.DATABASE_URL,
     http: {

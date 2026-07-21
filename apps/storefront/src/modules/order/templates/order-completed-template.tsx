@@ -26,18 +26,21 @@ export default async function OrderCompletedTemplate({
       <div className="content-container flex flex-col justify-center items-center gap-y-10 max-w-4xl h-full w-full">
         {isOnboarding && <OnboardingCta orderId={order.id} />}
         <div
-          className="flex flex-col gap-4 max-w-4xl h-full bg-white w-full py-10"
+          className="flex flex-col gap-4 max-w-4xl h-full bg-cosmos-paper w-full py-10 rounded-lg"
           data-testid="order-complete-container"
         >
           <Heading
             level="h1"
-            className="flex flex-col gap-y-3 text-ui-fg-base text-3xl mb-4"
+            className="flex flex-col gap-y-3 text-cosmos-ink font-display text-3xl font-semibold mb-4"
           >
             <span>Thank you!</span>
             <span>Your order was placed successfully.</span>
           </Heading>
           <OrderDetails order={order} />
-          <Heading level="h2" className="flex flex-row text-3xl-regular">
+          <Heading
+            level="h2"
+            className="flex flex-row text-3xl-regular text-cosmos-charcoal"
+          >
             Summary
           </Heading>
           <Items order={order} />

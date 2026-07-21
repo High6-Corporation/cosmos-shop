@@ -33,6 +33,18 @@ module.exports = {
           80: "#1F2937",
           90: "#111827",
         },
+        // ── Cosmos Bazaar "Ink & Paper" palette ──
+        cosmos: {
+          ink: "#1a2332", // primary: deep blue-black (headings, nav, primary buttons)
+          vermilion: "#cc2936", // accent: Japanese seal red (CTAs, active states, sale badges)
+          "vermilion-text": "#b91c1c", // darker vermilion for text-on-light use (WCAG AA)
+          paper: "#fcfcf9", // surface: barely-warm white (page backgrounds)
+          washi: "#f2ede6", // surface-alt: unbleached paper (card bg, section alternates)
+          charcoal: "#171717", // text-primary
+          graphite: "#706860", // text-muted: warm gray with brown undertone
+          hairline: "#e8e4dd", // border
+          forest: "#2d7a4f", // success: in-stock, confirmation
+        },
       },
       borderRadius: {
         none: "0px",
@@ -58,6 +70,7 @@ module.exports = {
         "3xl": "2rem",
       },
       fontFamily: {
+        display: ["Fraunces", "Georgia", "Times New Roman", "serif"],
         sans: [
           "Inter",
           "-apple-system",

@@ -69,11 +69,58 @@ export default async function PaginatedProducts({
   })
 
   const totalPages = Math.ceil(count / PRODUCT_LIMIT)
+  const hasActiveFilters = optionValueIds && optionValueIds.length > 0
+
+  if (products.length === 0) {
+    return (
+      <div className="py-20 text-center" data-testid="empty-state">
+        {hasActiveFilters ? (
+          <>
+            <p className="text-cosmos-charcoal font-medium mb-2">
+              No products match your filters
+            </p>
+            <p className="text-sm text-cosmos-graphite mb-6">
+              Try adjusting your selection or clearing all filters.
+            </p>
+            <a
+              href="?sortBy=created_at"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-cosmos-vermilion hover:text-cosmos-vermilion-text transition-colors"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+              Clear all filters
+            </a>
+          </>
+        ) : (
+          <>
+            <p className="text-cosmos-charcoal font-medium mb-2">
+              No products yet
+            </p>
+            <p className="text-sm text-cosmos-graphite">
+              Check back soon — we&apos;re adding new stationery and art
+              supplies regularly.
+            </p>
+          </>
+        )}
+      </div>
+    )
+  }
 
   return (
     <>
       <ul
-        className="grid grid-cols-2 w-full small:grid-cols-3 medium:grid-cols-4 gap-x-6 gap-y-8"
+        className="grid grid-cols-2 w-full small:grid-cols-3 gap-x-6 gap-y-8"
         data-testid="products-list"
       >
         {products.map((p) => {

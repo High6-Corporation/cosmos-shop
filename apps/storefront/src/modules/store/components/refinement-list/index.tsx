@@ -44,7 +44,7 @@ const RefinementList = ({
         router.push(nextPath)
       }
     },
-    [pathname, router, searchParams]
+    [pathname, router, searchParams],
   )
 
   const setQueryParams = (name: string, value: string) =>
@@ -52,19 +52,19 @@ const RefinementList = ({
 
   const selectedOptionValueIds = useMemo(
     () => parseOptionValueIds(searchParams),
-    [searchParams]
+    [searchParams],
   )
 
   const setOptionValueIds = (valueIds: string[]) =>
     updateQueryParams((params) => {
       params.delete(OPTION_VALUE_QUERY_KEY)
       valueIds.forEach((valueId) =>
-        params.append(OPTION_VALUE_QUERY_KEY, valueId)
+        params.append(OPTION_VALUE_QUERY_KEY, valueId),
       )
     })
 
   return (
-    <div className="flex flex-col gap-12 py-4 mb-8 small:px-0 pl-6 small:min-w-[250px] small:ml-[1.675rem]">
+    <div className="flex flex-col gap-8 py-4 mb-8 small:px-0 pl-6 small:min-w-[220px] small:ml-[1.675rem]">
       <SortProducts
         sortBy={sortBy}
         setQueryParams={setQueryParams}

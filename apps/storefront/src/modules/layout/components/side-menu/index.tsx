@@ -38,7 +38,7 @@ const SideMenu = ({ regions, locales, currentLocale }: SideMenuProps) => {
               <div className="relative flex h-full">
                 <Popover.Button
                   data-testid="nav-menu-button"
-                  className="relative h-full flex items-center transition-all ease-out duration-200 focus:outline-none hover:text-ui-fg-base"
+                  className="relative h-full flex items-center transition-all ease-out duration-200 focus:outline-none hover:text-cosmos-charcoal text-cosmos-graphite font-medium"
                 >
                   Menu
                 </Popover.Button>
@@ -62,13 +62,13 @@ const SideMenu = ({ regions, locales, currentLocale }: SideMenuProps) => {
                 leaveFrom="opacity-100 backdrop-blur-2xl"
                 leaveTo="opacity-0"
               >
-                <PopoverPanel className="flex flex-col absolute w-full pr-4 sm:pr-0 sm:w-1/3 2xl:w-1/4 sm:min-w-min h-[calc(100vh-1rem)] z-[51] inset-x-0 text-sm text-ui-fg-on-color m-2 backdrop-blur-2xl">
+                <PopoverPanel className="flex flex-col absolute w-full pr-4 sm:pr-0 sm:w-1/3 2xl:w-1/4 sm:min-w-min h-[calc(100vh-1rem)] z-[51] inset-x-0 text-sm m-2">
                   <div
                     data-testid="nav-menu-popup"
-                    className="flex flex-col h-full bg-[rgba(3,7,18,0.5)] rounded-rounded justify-between p-6"
+                    className="flex flex-col h-full bg-cosmos-ink/95 backdrop-blur-xl rounded-lg justify-between p-6 shadow-2xl"
                   >
                     <div className="flex justify-end" id="xmark">
-                      <button data-testid="close-menu-button" onClick={close}>
+                      <button data-testid="close-menu-button" onClick={close} className="text-white/80 hover:text-white transition-colors">
                         <XMark />
                       </button>
                     </div>
@@ -78,7 +78,7 @@ const SideMenu = ({ regions, locales, currentLocale }: SideMenuProps) => {
                           <li key={name}>
                             <LocalizedClientLink
                               href={href}
-                              className="text-3xl leading-10 hover:text-ui-fg-disabled"
+                              className="text-3xl leading-10 text-white/90 hover:text-white transition-colors font-display font-light tracking-tight"
                               onClick={close}
                               data-testid={`${name.toLowerCase()}-link`}
                             >
@@ -102,7 +102,7 @@ const SideMenu = ({ regions, locales, currentLocale }: SideMenuProps) => {
                           />
                           <ArrowRightMini
                             className={clx(
-                              "transition-transform duration-150",
+                              "transition-transform duration-150 text-white/60",
                               languageToggleState.state ? "-rotate-90" : ""
                             )}
                           />
@@ -121,13 +121,13 @@ const SideMenu = ({ regions, locales, currentLocale }: SideMenuProps) => {
                         )}
                         <ArrowRightMini
                           className={clx(
-                            "transition-transform duration-150",
+                            "transition-transform duration-150 text-white/60",
                             countryToggleState.state ? "-rotate-90" : ""
                           )}
                         />
                       </div>
-                      <Text className="flex justify-between txt-compact-small">
-                        © {new Date().getFullYear()} Medusa Store. All rights
+                      <Text className="flex justify-between txt-compact-small text-white/50">
+                        © {new Date().getFullYear()} Cosmos Bazaar. All rights
                         reserved.
                       </Text>
                     </div>

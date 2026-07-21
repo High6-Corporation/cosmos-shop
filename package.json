@@ -13,7 +13,8 @@
     "test": "turbo test",
     "backend:seed": "turbo seed --filter=@dtc/backend",
     "backend:dev": "turbo dev --filter=@dtc/backend",
-    "storefront:dev": "turbo dev --filter=@dtc/storefront",
+    "storefront:dev": "cd apps/storefront && npm run dev",
+    "storefront:build": "cd apps/storefront && npm run build",
     "postinstall": "patch-package"
   },
   "pnpm": {
@@ -21,8 +22,6 @@
   },
   "devDependencies": {
     "@medusajs/eslint-plugin": "2.16.0",
-    "@types/react": "^18.3.31",
-    "@types/react-dom": "^18.3.7",
     "eslint": "^9.39.4",
     "jiti": "^2.7.0",
     "patch-package": "^8.0.1",
@@ -30,7 +29,7 @@
     "turbo": "^2.0.14"
   },
   "workspaces": [
-    "apps/**",
+    "apps/backend",
     "!apps/backend/.medusa/**"
   ],
   "overrides": {
