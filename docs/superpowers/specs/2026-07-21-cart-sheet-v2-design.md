@@ -136,7 +136,10 @@ Design system: **Ink & Paper** tokens. Existing components reused: `CartSheet`, 
 **Reuses:**
 
 - `VariantSwatchCard` in single-select mode (no multi-select props passed — falls back to click-to-select behavior)
-- `QuantityStepper` in compact mode — default qty: 1, min: 1, max derived from `variant.inventory_quantity` (same stock-aware logic as PDP: unlimited if `!manage_inventory || allow_backorder`, else capped at `inventory_quantity`)
+- `QuantityStepper` in compact mode — default qty: 1, min: 1. Max follows the same three-state inventory logic used on the PDP:
+  - **Inventory tracked + in stock**: max = `inventory_quantity` (capped)
+  - **Backorder allowed**: max = `null` (uncapped, "+" never disabled)
+  - **Inventory tracked + 0 stock + no backorder**: max = 0, stepper fully disabled, "Out of stock" badge on variant card
 
 **Behavior:**
 
@@ -224,17 +227,21 @@ const [engravedText, setEngravedText] = useState(
 - **Text change**: debounced (400ms) `updateLineItem({ lineId, quantity, metadata: { engraved: true, engraved_text: newText } })`
 - **Server action triggers** router-refresh → `CartSheetProvider` syncs from new `initialCart`
 
+### 4.7 Fee calculation — authoritative field
+
+Because `engraved_text` now persists even when `engraved: false`, the authoritative field for whether the engraving fee applies is **`engraved` (boolean)**, not the presence of non-empty text. A line item with `engraved: false` and `engraved_text: "Sarah"` should NOT be charged the engraving fee. All fee-calculating code (cart summary, checkout total, line-item price breakdown) must key off `metadata.engraved === true`, consistent with the existing `summary.tsx` validation that already checks that field.
+
 ---
 
 ## 5. Component Changes
 
-| Component                                                        | Action        | Details                                                                   |
-| ---------------------------------------------------------------- | ------------- | ------------------------------------------------------------------------- |
-| `CartSheet` (`cart-sheet/index.tsx`)                             | **Modify**    | Add recommended panel alongside cart on desktop; bottom section on mobile |
-| `CartSheetItem` (`cart-sheet/cart-sheet-item.tsx`)               | **Modify**    | Add engraving toggle (Yes/No pills + conditional text field)              |
-| `CartSheetRecommended` (`cart-sheet/cart-sheet-recommended.tsx`) | **Modify**    | Add `[+ Add]` button per product card; pass `openVariantModal` callback   |
-| New: `QuickAddModal` (`cart-sheet/quick-add-modal.tsx`)          | **Create**    | Compact variant-selection modal for multi-variant products                |
-| `CartSheetProvider`                                              | **Unchanged** | Existing context already handles cart state, open/close, partial-failure  |
+| Component                                                        | Action        | Details                                                                                                                                                                 |
+| ---------------------------------------------------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CartSheet` (`cart-sheet/index.tsx`)                             | **Modify**    | Add recommended panel alongside cart on desktop; bottom section on mobile                                                                                               |
+| `CartSheetItem` (`cart-sheet/cart-sheet-item.tsx`)               | **Modify**    | Add engraving toggle (Yes/No pills + conditional text field)                                                                                                            |
+| `CartSheetRecommended` (`cart-sheet/cart-sheet-recommended.tsx`) | **Modify**    | Add `[+ Add]` button per product card; pass `openVariantModal` callback                                                                                                 |
+| New: `QuickAddModal` (`cart-sheet/quick-add-modal.tsx`)          | **Create**    | Compact variant-selection modal for multi-variant products                                                                                                              |
+| `CartSheetProvider`                                              | **Unchanged** | Existing context already handles cart state, open/close, partial-failure (added in prior PDP/cart overhaul, verified in current codebase — not a change from this spec) |
 
 ---
 
