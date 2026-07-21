@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - Design system: Ink & Paper tokens (Ink #1a2332, Vermilion #cc2936, Paper #fcfcf9, Washi #f2ede6, Fraunces display, Inter body) — already applied storefront-wide
-- Desktop side-panel breakpoint: ≥1080px (Tailwind `xl:`). Mobile: <1080px.
+- Desktop side-panel breakpoint: ≥1080px (Tailwind `min-[1080px]:` / `max-[1079px]:`). Mobile: <1080px. The Tailwind config uses custom screen names (small, medium, large) and does NOT define `xl` — using `xl:` would silently default to 1280px. Use arbitrary-value breakpoints.
 - Engraving fee authority: `metadata.engraved === true` (boolean), NOT text presence. A line item with `engraved: false` + non-empty `engraved_text` is NOT charged the fee.
 - Engraving text MUST survive "No" toggle and sheet close/reopen — do NOT clear `engraved_text` server-side on toggle-off.
 - Fee threshold logic: `feeWaived = threshold > 0 && qty >= threshold`. Fee charges when `hasText && isEngravable && !feeWaived`. Do NOT use `|| 1` fallback.
@@ -101,7 +101,7 @@ export default function CartSheetItem({
         updateLineItem({
           lineId: item.id,
           quantity: item.quantity,
-          metadata: { engraved: true, engraved_text: text },
+          metadata: { ...item.metadata, engraved: true, engraved_text: text },
         })
       }, 400)
     },
@@ -118,18 +118,25 @@ export default function CartSheetItem({
   const handleEngravingToggle = async (on: boolean) => {
     setIsEngraved(on)
     if (on) {
-      // Restore preserved text (from local state; server still has it since we never clear)
-      await updateLineItem({
-        lineId: item.id,
-        quantity: item.quantity,
-        metadata: { engraved: true, engraved_text: engravedText },
-      })
+      // Show text field immediately (local state), but defer engraved: true
+      // to the first typed text. This prevents charging the fee on a blank
+      // field — per §4.7, engraved (boolean) is the fee authority.
+      // The debounced text update will set engraved: true when the user types.
+      // For now, just ensure engraved_text is preserved if it already exists.
+      if (engravedText.trim().length > 0) {
+        await updateLineItem({
+          lineId: item.id,
+          quantity: item.quantity,
+          metadata: { ...item.metadata, engraved: true, engraved_text: engravedText },
+        })
+      }
+      // If no text yet, no server call — wait for the user to type
     } else {
       // Toggle off — do NOT clear engraved_text so it survives close/reopen
       await updateLineItem({
         lineId: item.id,
         quantity: item.quantity,
-        metadata: { engraved: false },
+        metadata: { ...item.metadata, engraved: false },
       })
     }
   }
@@ -267,7 +274,7 @@ import { HttpTypes } from "@medusajs/types";
 import { Button } from "@modules/common/components/ui";
 import VariantSwatchCard from "@modules/products/components/product-actions/variant-swatch-card";
 import QuantityStepper from "@modules/products/components/product-actions/quantity-stepper";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { isEqual } from "lodash";
 
 const optionsAsKeymap = (
@@ -314,6 +321,11 @@ export default function QuickAddModal({
       (opt) => options[opt.id] !== undefined,
     );
   }, [product.options, options]);
+
+  // Reset quantity to 1 when selected variant changes (prevents stale qty > new max)
+  useEffect(() => {
+    setQuantity(1);
+  }, [selectedVariant?.id]);
 
   // Stock-aware max — three-state inventory from PDP logic
   const maxQty = useMemo(() => {
@@ -511,6 +523,7 @@ import QuickAddModal from "./quick-add-modal";
 type CartSheetRecommendedProps = {
   cart: HttpTypes.StoreCart | null;
   countryCode: string;
+  showEmptyState?: boolean; // when true, renders "Check back soon" instead of null
 };
 
 export default function CartSheetRecommended({
@@ -552,7 +565,7 @@ export default function CartSheetRecommended({
         const { response } = await listProducts({
           countryCode,
           queryParams: {
-            ...(categoryIds.length > 0 ? { category_id: categoryIds[0] } : {}),
+            ...(categoryIds.length > 0 ? { category_id: categoryIds } : {}),
             limit: categoryIds.length > 0 ? 20 : 4,
             fields:
               "*variants.calculated_price,*thumbnail,*images,*variants.inventory_quantity,*variants.manage_inventory,*variants.allow_backorder,*options,*options.values",
@@ -605,7 +618,20 @@ export default function CartSheetRecommended({
     }
   };
 
-  if (products.length === 0) return null;
+  if (products.length === 0) {
+    // Desktop panel shows placeholder; mobile hides entirely
+    if (showEmptyState) {
+      return (
+        <div className="mt-4 pt-4 border-t border-cosmos-hairline">
+          <p className="text-xs font-semibold text-cosmos-graphite uppercase tracking-wide mb-3">
+            You might also like
+          </p>
+          <p className="text-xs text-cosmos-graphite italic">Check back soon</p>
+        </div>
+      );
+    }
+    return null;
+  }
 
   return (
     <>
@@ -795,12 +821,13 @@ export default function CartSheet() {
             leaveFrom="translate-x-0"
             leaveTo="translate-x-full"
           >
-            <div className="hidden xl:block fixed right-[28rem] top-0 h-full w-72 bg-cosmos-paper/95 backdrop-blur-sm border-r border-cosmos-hairline shadow-lg z-40 overflow-y-auto">
+            <div className="hidden min-[1080px]:block fixed right-[28rem] top-0 h-full w-72 bg-cosmos-paper/95 backdrop-blur-sm border-r border-cosmos-hairline shadow-lg z-40 overflow-y-auto">
               <div className="px-4 pt-16 pb-4">
-                <p className="text-xs font-semibold text-cosmos-graphite uppercase tracking-wide mb-3">
-                  You might also like
-                </p>
-                <CartSheetRecommended cart={cart} countryCode={countryCode} />
+                <CartSheetRecommended
+                  cart={cart}
+                  countryCode={countryCode}
+                  showEmptyState={true}
+                />
               </div>
             </div>
           </Transition.Child>
@@ -903,7 +930,7 @@ export default function CartSheet() {
                   </div>
 
                   {/* Mobile: Recommended products inside scroll body */}
-                  <div className="xl:hidden">
+                  <div className="block min-[1080px]:hidden">
                     <CartSheetRecommended
                       cart={cart}
                       countryCode={countryCode}
