@@ -125,18 +125,18 @@ export default function CartSheetRecommended({
                     </p>
                   )}
                 </LocalizedClientLink>
-                <Button
+                <button
+                  type="button"
                   onClick={(e) => {
+                    e.preventDefault()
                     e.stopPropagation()
                     openQuickAdd(product)
                   }}
-                  size="small"
-                  variant="secondary"
-                  className="w-full mt-1 text-xs h-7"
+                  className="w-full mt-1 text-xs h-7 px-2 py-1 rounded-md border border-cosmos-hairline bg-cosmos-paper text-cosmos-charcoal hover:bg-cosmos-washi transition-colors cursor-pointer"
                   data-testid={`quick-add-${product.id}`}
                 >
                   + Add
-                </Button>
+                </button>
               </div>
             ))}
           </div>
