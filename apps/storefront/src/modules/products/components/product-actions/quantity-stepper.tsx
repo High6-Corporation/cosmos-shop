@@ -8,6 +8,7 @@ type QuantityStepperProps = {
   onChange: (qty: number) => void
   max: number | null // null = no limit (no inventory tracking or backorder allowed)
   disabled: boolean
+  compact?: boolean
   "data-testid"?: string
 }
 
@@ -25,6 +26,7 @@ const QuantityStepper: React.FC<QuantityStepperProps> = ({
   onChange,
   max,
   disabled,
+  compact = false,
   "data-testid": dataTestId,
 }) => {
   const atMin = quantity <= 1
@@ -50,7 +52,8 @@ const QuantityStepper: React.FC<QuantityStepperProps> = ({
           onClick={decrement}
           disabled={atMin || disabled}
           className={clx(
-            "flex items-center justify-center w-10 h-10 rounded-l-md border border-cosmos-hairline bg-cosmos-paper text-lg font-medium transition-colors",
+            "flex items-center justify-center rounded-l-md border border-cosmos-hairline bg-cosmos-paper text-lg font-medium transition-colors",
+            compact ? "w-8 h-8" : "w-10 h-10",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cosmos-ink focus-visible:ring-offset-2",
             atMin || disabled
               ? "text-cosmos-hairline cursor-not-allowed"
@@ -63,7 +66,8 @@ const QuantityStepper: React.FC<QuantityStepperProps> = ({
         </button>
         <span
           className={clx(
-            "flex items-center justify-center w-12 h-10 border-y border-cosmos-hairline bg-cosmos-paper text-sm font-semibold text-cosmos-charcoal tabular-nums",
+            "flex items-center justify-center border-y border-cosmos-hairline bg-cosmos-paper text-sm font-semibold text-cosmos-charcoal tabular-nums",
+            compact ? "w-10 h-8" : "w-12 h-10",
             disabled && "text-cosmos-graphite",
           )}
           data-testid="quantity-display"
@@ -74,7 +78,8 @@ const QuantityStepper: React.FC<QuantityStepperProps> = ({
           onClick={increment}
           disabled={atMax || disabled}
           className={clx(
-            "flex items-center justify-center w-10 h-10 rounded-r-md border border-cosmos-hairline bg-cosmos-paper text-lg font-medium transition-colors",
+            "flex items-center justify-center rounded-r-md border border-cosmos-hairline bg-cosmos-paper text-lg font-medium transition-colors",
+            compact ? "w-8 h-8" : "w-10 h-10",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cosmos-ink focus-visible:ring-offset-2",
             atMax || disabled
               ? "text-cosmos-hairline cursor-not-allowed"
