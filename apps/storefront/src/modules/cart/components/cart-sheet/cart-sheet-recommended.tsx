@@ -1,12 +1,10 @@
 "use client"
 
-import { addToCart } from "@lib/data/cart"
 import { sdk } from "@lib/config"
-import { useCartSheet } from "@modules/cart/components/cart-sheet-provider"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@modules/common/components/ui"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import React, { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import QuickAddModal from "./quick-add-modal"
 
 type CartSheetRecommendedProps = {
@@ -20,12 +18,9 @@ export default function CartSheetRecommended({
   countryCode,
   showEmptyState,
 }: CartSheetRecommendedProps) {
-  const { openSheet, refreshCart, setPartialFailureMessage } = useCartSheet()
   const [products, setProducts] = useState<HttpTypes.StoreProduct[]>([])
   const [modalProduct, setModalProduct] =
     useState<HttpTypes.StoreProduct | null>(null)
-  const [adding, setAdding] = useState<Record<string, boolean>>({})
-  const [added, setAdded] = useState<Record<string, boolean>>({})
   const [fetching, setFetching] = useState(false)
 
   const fetchRecommended = useCallback(async () => {
@@ -69,37 +64,8 @@ export default function CartSheetRecommended({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemCount, countryCode])
 
-  const handleQuickAdd = async (product: HttpTypes.StoreProduct) => {
-    const variant = product.variants?.[0]
-    if (!variant?.id) return
-
-    if ((product.variants?.length ?? 0) > 1) {
-      setModalProduct(product)
-      return
-    }
-
-    const productId = product.id!
-    setAdding((prev) => ({ ...prev, [productId]: true }))
-    try {
-      await addToCart({
-        variantId: variant.id,
-        quantity: 1,
-        countryCode,
-      })
-      setAdded((prev) => ({ ...prev, [productId]: true }))
-      setProducts((prev) => prev.filter((p) => p.id !== product.id))
-      await refreshCart()
-      openSheet()
-    } catch {
-      setPartialFailureMessage(
-        `Couldn't add ${product.title ?? "item"}. Please try again.`,
-      )
-    } finally {
-      setAdding((prev) => ({ ...prev, [productId]: false }))
-      setTimeout(() => {
-        setAdded((prev) => ({ ...prev, [productId]: false }))
-      }, 1500)
-    }
+  const handleQuickAdd = (product: HttpTypes.StoreProduct) => {
+    setModalProduct(product)
   }
 
   if (products.length === 0) {
@@ -109,9 +75,7 @@ export default function CartSheetRecommended({
           <p className="text-xs font-semibold text-cosmos-graphite uppercase tracking-wide mb-3">
             You might also like
           </p>
-          <p className="text-xs text-cosmos-graphite italic">
-            Check back soon
-          </p>
+          <p className="text-xs text-cosmos-graphite italic">Check back soon</p>
         </div>
       )
     }
@@ -126,62 +90,56 @@ export default function CartSheetRecommended({
         </p>
         <div className="max-h-[400px] overflow-y-auto">
           <div className="grid grid-cols-2 gap-3">
-            {products.map((product) => {
-              const productId = product.id!
-              return (
-                <div key={product.id} className="group">
-                  <LocalizedClientLink
-                    href={`/products/${product.handle}`}
-                    className="block"
-                  >
-                    <div className="aspect-square rounded-md overflow-hidden bg-cosmos-washi mb-1.5">
-                      {product.thumbnail ? (
-                        <img
-                          src={product.thumbnail}
-                          alt={product.title ?? ""}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-cosmos-graphite text-xs">
-                          No image
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-xs font-medium text-cosmos-charcoal truncate group-hover:text-cosmos-ink transition-colors">
-                      {product.title}
-                    </p>
-                    {product.variants?.[0]?.calculated_price
-                      ?.calculated_amount != null && (
-                      <p className="text-xs text-cosmos-graphite">
-                        {new Intl.NumberFormat("en-PH", {
-                          style: "currency",
-                          currency:
-                            product.variants[0].calculated_price
-                              .currency_code ?? "PHP",
-                        }).format(
-                          product.variants[0].calculated_price
-                            .calculated_amount,
-                        )}
-                      </p>
+            {products.map((product) => (
+              <div key={product.id} className="group">
+                <LocalizedClientLink
+                  href={`/products/${product.handle}`}
+                  className="block"
+                >
+                  <div className="aspect-square rounded-md overflow-hidden bg-cosmos-washi mb-1.5">
+                    {product.thumbnail ? (
+                      <img
+                        src={product.thumbnail}
+                        alt={product.title ?? ""}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-cosmos-graphite text-xs">
+                        No image
+                      </div>
                     )}
-                  </LocalizedClientLink>
-                  <Button
-                    onClick={(e: React.MouseEvent) => {
-                      e.stopPropagation()
-                      handleQuickAdd(product)
-                    }}
-                    size="small"
-                    variant="secondary"
-                    disabled={adding[productId]}
-                    isLoading={adding[productId]}
-                    className="w-full mt-1 text-xs h-7"
-                    data-testid={`quick-add-${product.id}`}
-                  >
-                    {added[productId] ? "✓ Added" : "+ Add"}
-                  </Button>
-                </div>
-              )
-            })}
+                  </div>
+                  <p className="text-xs font-medium text-cosmos-charcoal truncate group-hover:text-cosmos-ink transition-colors">
+                    {product.title}
+                  </p>
+                  {product.variants?.[0]?.calculated_price?.calculated_amount !=
+                    null && (
+                    <p className="text-xs text-cosmos-graphite">
+                      {new Intl.NumberFormat("en-PH", {
+                        style: "currency",
+                        currency:
+                          product.variants[0].calculated_price.currency_code ??
+                          "PHP",
+                      }).format(
+                        product.variants[0].calculated_price.calculated_amount,
+                      )}
+                    </p>
+                  )}
+                </LocalizedClientLink>
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setModalProduct(product)
+                  }}
+                  size="small"
+                  variant="secondary"
+                  className="w-full mt-1 text-xs h-7"
+                  data-testid={`quick-add-${product.id}`}
+                >
+                  + Add
+                </Button>
+              </div>
+            ))}
           </div>
         </div>
       </div>

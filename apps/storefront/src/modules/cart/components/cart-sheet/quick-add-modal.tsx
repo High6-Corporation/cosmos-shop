@@ -37,32 +37,29 @@ export default function QuickAddModal({
   const [quantity, setQuantity] = useState(1)
   const [isAdding, setIsAdding] = useState(false)
 
-  // Find selected variant from options
+  const hasOptions = (product.options?.length ?? 0) > 0
+
   const selectedVariant = useMemo(() => {
-    if (!product.variants || product.variants.length === 0) return undefined
-    return product.variants.find((v) => {
-      const variantOptions = optionsAsKeymap(v.options)
-      return isEqual(variantOptions, options)
+    if (!hasOptions) return product.variants?.[0] ?? undefined
+    return (product.variants ?? []).find((v) => {
+      return isEqual(optionsAsKeymap(v.options), options)
     })
-  }, [product.variants, options])
+  }, [product.variants, options, hasOptions])
 
-  // Check if all option groups have a selection
   const allOptionsSelected = useMemo(() => {
-    return (product.options || []).every((opt) => options[opt.id] !== undefined)
-  }, [product.options, options])
+    if (!hasOptions) return true
+    return (product.options ?? []).every((o) => options[o.id] !== undefined)
+  }, [product.options, options, hasOptions])
 
-  // Reset quantity to 1 when selected variant changes (prevents stale qty > new max)
   useEffect(() => {
     setQuantity(1)
   }, [selectedVariant?.id])
 
-  // Stock-aware max — three-state inventory from PDP logic
   const maxQty = useMemo(() => {
     if (!selectedVariant) return null
-    if (!selectedVariant.manage_inventory || selectedVariant.allow_backorder) {
-      return null // uncapped
-    }
-    return selectedVariant.inventory_quantity ?? 0 // capped
+    if (!selectedVariant.manage_inventory || selectedVariant.allow_backorder)
+      return null
+    return selectedVariant.inventory_quantity ?? 0
   }, [selectedVariant])
 
   const inStock = useMemo(() => {
@@ -81,6 +78,10 @@ export default function QuickAddModal({
         }).format(price)
       : null
 
+  const canAdd = hasOptions
+    ? !!selectedVariant && inStock !== false && allOptionsSelected
+    : !!selectedVariant && inStock !== false
+
   const handleAdd = async () => {
     if (!selectedVariant?.id) return
     setIsAdding(true)
@@ -93,8 +94,6 @@ export default function QuickAddModal({
       handleClose()
       await refreshCart()
       openSheet()
-    } catch {
-      // addToCart is a server action that handles errors internally
     } finally {
       setIsAdding(false)
     }
@@ -109,7 +108,6 @@ export default function QuickAddModal({
   return (
     <Transition show={open} as={Fragment}>
       <Dialog onClose={handleClose} className="relative z-[60]">
-        {/* Backdrop */}
         <Transition.Child
           as={Fragment}
           enter="ease-out duration-200"
@@ -122,7 +120,6 @@ export default function QuickAddModal({
           <div className="fixed inset-0 bg-cosmos-ink/40" aria-hidden="true" />
         </Transition.Child>
 
-        {/* Panel */}
         <div className="fixed inset-0 flex items-center justify-center p-4">
           <Transition.Child
             as={Fragment}
@@ -134,14 +131,13 @@ export default function QuickAddModal({
             leaveTo="opacity-0 scale-95"
           >
             <Dialog.Panel className="w-full max-w-sm bg-cosmos-paper rounded-lg shadow-xl max-h-[90vh] overflow-y-auto">
-              {/* Header */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-cosmos-hairline">
                 <Dialog.Title className="text-base font-semibold text-cosmos-charcoal font-fraunces">
-                  Select Variant
+                  {hasOptions ? "Select Variant" : product.title}
                 </Dialog.Title>
                 <button
                   onClick={handleClose}
-                  className="p-1 rounded-md text-cosmos-graphite hover:text-cosmos-charcoal hover:bg-cosmos-washi transition-colors"
+                  className="p-1 rounded-md text-cosmos-graphite hover:text-cosmos-charcoal hover:bg-cosmos-washi"
                   aria-label="Close"
                 >
                   <svg
@@ -160,26 +156,29 @@ export default function QuickAddModal({
                 </button>
               </div>
 
-              {/* Body */}
-              <div className="px-4 py-4 flex flex-col gap-y-5">
-                {/* One VariantSwatchCard per option group */}
-                {(product.options || []).map((option) => (
-                  <div key={option.id}>
-                    <VariantSwatchCard
-                      option={option}
-                      variants={product.variants ?? []}
-                      productImages={product.images ?? null}
-                      current={options[option.id]}
-                      updateOption={(optionId, value) =>
-                        setOptions((prev) => ({ ...prev, [optionId]: value }))
-                      }
-                      title={option.title ?? ""}
-                      disabled={isAdding}
-                    />
-                  </div>
-                ))}
+              <div className="px-4 py-4 flex flex-col gap-y-4">
+                {hasOptions ? (
+                  (product.options ?? []).map((option) => (
+                    <div key={option.id}>
+                      <VariantSwatchCard
+                        option={option}
+                        variants={product.variants ?? []}
+                        productImages={product.images ?? null}
+                        current={options[option.id]}
+                        updateOption={(optionId, value) =>
+                          setOptions((prev) => ({ ...prev, [optionId]: value }))
+                        }
+                        title={option.title ?? ""}
+                        disabled={isAdding}
+                      />
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-cosmos-charcoal text-center">
+                    {product.title}
+                  </p>
+                )}
 
-                {/* Quantity stepper */}
                 <div className="flex items-center gap-x-3">
                   <span className="text-sm font-medium text-cosmos-charcoal">
                     Qty:
@@ -188,13 +187,11 @@ export default function QuickAddModal({
                     quantity={quantity}
                     onChange={setQuantity}
                     max={maxQty}
-                    disabled={!selectedVariant || inStock === false || isAdding}
+                    disabled={!canAdd || isAdding}
                     compact
-                    data-testid="quick-add-modal-stepper"
                   />
                 </div>
 
-                {/* Price */}
                 {formattedPrice && (
                   <p className="text-sm text-cosmos-graphite text-right">
                     {formattedPrice} each
@@ -202,17 +199,15 @@ export default function QuickAddModal({
                 )}
               </div>
 
-              {/* Footer — Add button */}
               <div className="px-4 py-3 border-t border-cosmos-hairline">
                 <Button
                   onClick={handleAdd}
-                  disabled={!selectedVariant || inStock === false || isAdding}
+                  disabled={!canAdd || isAdding}
                   variant="primary"
                   className="w-full h-10 bg-cosmos-ink hover:bg-cosmos-charcoal text-white"
                   isLoading={isAdding}
-                  data-testid="quick-add-modal-button"
                 >
-                  {!allOptionsSelected
+                  {hasOptions && !allOptionsSelected
                     ? "Select options"
                     : inStock === false
                       ? "Out of stock"
