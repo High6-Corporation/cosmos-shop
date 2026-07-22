@@ -36,7 +36,7 @@ export default function ProductActions({
   const [isAdding, setIsAdding] = useState(false)
   const [isAdded, setIsAdded] = useState(false)
 
-  // Per-variant metadata lookup — centralizes inventory + engraving logic
+  // Per-variant metadata lookup -- centralizes inventory + engraving logic
   const variantMeta = useMemo(() => {
     const map: Record<
       string,
@@ -270,6 +270,7 @@ export default function ProductActions({
                         }
                       }}
                       variantMeta={variantMeta}
+                      hideEngravingFields={useSameText}
                     />
                   </div>
                 )
@@ -281,18 +282,38 @@ export default function ProductActions({
 
         {/* "Use same text for all" toggle */}
         {showSharedToggle && (
-          <label className="flex items-center gap-x-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={useSameText}
-              onChange={(e) => handleUseSameTextToggle(e.target.checked)}
-              className="w-4 h-4 rounded border-cosmos-hairline text-cosmos-vermilion focus:ring-cosmos-ink"
-              data-testid="use-same-text-checkbox"
-            />
-            <span className="text-sm text-cosmos-charcoal">
-              Use the same text for all variants
-            </span>
-          </label>
+          <div className="flex flex-col gap-y-3">
+            <label className="flex items-center gap-x-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={useSameText}
+                onChange={(e) => handleUseSameTextToggle(e.target.checked)}
+                className="w-4 h-4 rounded border-cosmos-hairline text-cosmos-vermilion focus:ring-cosmos-ink"
+                data-testid="use-same-text-checkbox"
+              />
+              <span className="text-sm text-cosmos-charcoal">
+                Use the same text for all variants
+              </span>
+            </label>
+            {useSameText && (
+              <input
+                type="text"
+                value={sharedEngravingText}
+                onChange={(e) => {
+                  const text = e.target.value
+                  setSharedEngravingText(text)
+                  setEngravingTexts((prev) => {
+                    const next = { ...prev }
+                    for (const ev of engravableVariants) next[ev.id!] = text
+                    return next
+                  })
+                }}
+                placeholder="Engraving text for all variants..."
+                className="w-full text-sm px-3 py-2 rounded border border-cosmos-hairline bg-cosmos-paper text-cosmos-charcoal placeholder:text-cosmos-graphite focus:outline-none focus:ring-1 focus:ring-cosmos-ink"
+                data-testid="shared-engraving-input"
+              />
+            )}
+          </div>
         )}
 
         <ProductPrice product={product} variant={undefined} />
@@ -321,7 +342,7 @@ export default function ProductActions({
               ? anyOutOfStock
                 ? "Out of stock"
                 : "Select variants"
-              : `Add ${totalItems} item${totalItems > 1 ? "s" : ""} to cart — ${formattedTotal}`}
+              : `Add ${totalItems} item${totalItems > 1 ? "s" : ""} to cart -- ${formattedTotal}`}
         </Button>
 
         <MobileActions

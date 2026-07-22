@@ -23,16 +23,17 @@ type VariantSwatchCardProps = {
   title: string
   disabled: boolean
   "data-testid"?: string
-  // Multi-select mode (all optional — when absent, card behaves as single-select):
+  // Multi-select mode (all optional -- when absent, card behaves as single-select):
   variantQuantities?: Record<string, number> // variant_id → qty
   onVariantQuantityChange?: (variantId: string, qty: number) => void
   variantEngravingTexts?: Record<string, string> // variant_id → engraving text
   onVariantEngravingTextChange?: (variantId: string, text: string) => void
   variantMeta?: Record<string, VariantMeta> // variant_id → metadata
+  hideEngravingFields?: boolean // when true, suppress per-variant engraving text inputs
 }
 
 /**
- * VariantSwatchCard — image-backed variant selector replacing the plain
+ * VariantSwatchCard -- image-backed variant selector replacing the plain
  * text-button OptionSelect from the Medusa default.
  *
  * Fallback tiers for each option value:
@@ -56,6 +57,7 @@ const VariantSwatchCard: React.FC<VariantSwatchCardProps> = ({
   variantEngravingTexts,
   onVariantEngravingTextChange,
   variantMeta,
+  hideEngravingFields,
 }) => {
   // Build a map: option_value → first matching variant
   const valueToVariant = React.useMemo(() => {
@@ -103,10 +105,7 @@ const VariantSwatchCard: React.FC<VariantSwatchCardProps> = ({
   return (
     <div className="flex flex-col gap-y-3">
       <span className="text-sm font-medium text-cosmos-charcoal">{title}</span>
-      <div
-        className="grid grid-cols-1 gap-4"
-        data-testid={dataTestId}
-      >
+      <div className="grid grid-cols-1 gap-4" data-testid={dataTestId}>
         {filteredOptions.map((value) => {
           const imageUrl = resolveImage(value)
           const inStock = isInStock(value)
@@ -119,7 +118,7 @@ const VariantSwatchCard: React.FC<VariantSwatchCardProps> = ({
 
           const cardContent = (
             <>
-              {/* Image area — fixed size in multi-select, full-width in single-select */}
+              {/* Image area -- fixed size in multi-select, full-width in single-select */}
               <div
                 className={
                   isMultiSelect
@@ -127,23 +126,6 @@ const VariantSwatchCard: React.FC<VariantSwatchCardProps> = ({
                     : "relative w-full aspect-square overflow-hidden rounded-md bg-cosmos-washi"
                 }
               >
-                {/* Deselect button — only in multi-select mode when selected */}
-                {isMultiSelect && selected && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      const variant = valueToVariant[value]
-                      if (variant?.id && onVariantQuantityChange) {
-                        onVariantQuantityChange(variant.id, 0)
-                      }
-                    }}
-                    className="absolute top-1 right-1 z-10 w-5 h-5 flex items-center justify-center rounded-full bg-cosmos-charcoal/60 text-white text-xs hover:bg-cosmos-charcoal transition-colors"
-                    aria-label={`Deselect ${value}`}
-                    data-testid="variant-deselect"
-                  >
-                    ×
-                  </button>
-                )}
                 {imageUrl ? (
                   <Image
                     src={imageUrl}
@@ -162,8 +144,12 @@ const VariantSwatchCard: React.FC<VariantSwatchCardProps> = ({
                 )}
               </div>
 
-              {/* Label + controls wrapper — flex-1 in multi-select for horizontal layout */}
-              <div className={isMultiSelect ? "flex-1 min-w-0 flex flex-col gap-y-1" : ""}>
+              {/* Label + controls wrapper -- flex-1 in multi-select for horizontal layout */}
+              <div
+                className={
+                  isMultiSelect ? "flex-1 min-w-0 flex flex-col gap-y-1" : ""
+                }
+              >
                 {/* Label */}
                 <span
                   className={clx(
@@ -175,7 +161,7 @@ const VariantSwatchCard: React.FC<VariantSwatchCardProps> = ({
                   {value}
                 </span>
 
-                {/* Inline stepper — rendered when multi-select props are provided */}
+                {/* Inline stepper -- rendered when multi-select props are provided */}
                 {onVariantQuantityChange &&
                   (() => {
                     const variant = valueToVariant[value]
@@ -188,65 +174,65 @@ const VariantSwatchCard: React.FC<VariantSwatchCardProps> = ({
                         className="w-full"
                         onClick={(e) => e.stopPropagation()}
                       >
-                      <QuantityStepper
-                        quantity={qty}
-                        onChange={(newQty) =>
-                          onVariantQuantityChange(variantId, newQty)
-                        }
-                        max={meta?.maxQty ?? null}
-                        disabled={disabled || meta?.inStock === false}
-                        compact
-                        data-testid={`variant-stepper-${variantId}`}
-                      />
-                    </div>
-                  )
-                })()}
+                        <QuantityStepper
+                          quantity={qty}
+                          onChange={(newQty) =>
+                            onVariantQuantityChange(variantId, newQty)
+                          }
+                          max={meta?.maxQty ?? null}
+                          disabled={disabled || meta?.inStock === false}
+                          compact
+                          data-testid={`variant-stepper-${variantId}`}
+                        />
+                      </div>
+                    )
+                  })()}
 
-              {/* Engraving field — shown when qty > 0 AND variant is engravable */}
-              {onVariantEngravingTextChange &&
-                (() => {
-                  const variant = valueToVariant[value]
-                  const variantId = variant?.id
-                  if (!variantId) return null
-                  const qty = variantQuantities?.[variantId] ?? 0
-                  const meta = variantMeta?.[variantId]
-                  const isEngravable = meta?.isEngravable ?? false
-                  if (qty === 0 || !isEngravable) return null
-                  const text = variantEngravingTexts?.[variantId] ?? ""
-                  return (
-                    <div
-                      className="w-full mt-1.5"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <input
-                        type="text"
-                        value={text}
-                        onChange={(e) =>
-                          onVariantEngravingTextChange(
-                            variantId,
-                            e.target.value,
-                          )
-                        }
-                        placeholder="Engraving text..."
-                        className="w-full text-[11px] px-2 py-1 rounded border border-cosmos-hairline bg-cosmos-paper text-cosmos-charcoal placeholder:text-cosmos-graphite focus:outline-none focus:ring-1 focus:ring-cosmos-ink"
-                        data-testid={`engraving-input-${variantId}`}
-                      />
-                      {meta?.fee !== undefined && meta.fee > 0 && (
-                        <p className="text-[10px] text-cosmos-graphite mt-0.5">
-                          {new Intl.NumberFormat("en-PH", {
-                            style: "currency",
-                            currency: "PHP",
-                          }).format(meta.fee)}
-                          /unit
-                          {meta.threshold > 1 && (
-                            <> — free at {meta.threshold}+ units</>
-                          )}
-                        </p>
-                      )}
-                    </div>
-                  )
-                })()}
-
+                {/* Engraving field -- shown when qty > 0 AND variant is engravable */}
+                {onVariantEngravingTextChange &&
+                  !hideEngravingFields &&
+                  (() => {
+                    const variant = valueToVariant[value]
+                    const variantId = variant?.id
+                    if (!variantId) return null
+                    const qty = variantQuantities?.[variantId] ?? 0
+                    const meta = variantMeta?.[variantId]
+                    const isEngravable = meta?.isEngravable ?? false
+                    if (qty === 0 || !isEngravable) return null
+                    const text = variantEngravingTexts?.[variantId] ?? ""
+                    return (
+                      <div
+                        className="w-full mt-1.5"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <input
+                          type="text"
+                          value={text}
+                          onChange={(e) =>
+                            onVariantEngravingTextChange(
+                              variantId,
+                              e.target.value,
+                            )
+                          }
+                          placeholder="Engraving text..."
+                          className="w-full text-[11px] px-2 py-1 rounded border border-cosmos-hairline bg-cosmos-paper text-cosmos-charcoal placeholder:text-cosmos-graphite focus:outline-none focus:ring-1 focus:ring-cosmos-ink"
+                          data-testid={`engraving-input-${variantId}`}
+                        />
+                        {meta?.fee !== undefined && meta.fee > 0 && (
+                          <p className="text-[10px] text-cosmos-graphite mt-0.5">
+                            {new Intl.NumberFormat("en-PH", {
+                              style: "currency",
+                              currency: "PHP",
+                            }).format(meta.fee)}
+                            /unit
+                            {meta.threshold > 1 && (
+                              <> -- free at {meta.threshold}+ units</>
+                            )}
+                          </p>
+                        )}
+                      </div>
+                    )
+                  })()}
               </div>
 
               {/* Out-of-stock badge */}
@@ -291,10 +277,34 @@ const VariantSwatchCard: React.FC<VariantSwatchCardProps> = ({
               data-testid="variant-swatch"
             >
               {cardContent}
+              {/* Deselect button -- rightmost edge of the card for clarity */}
+              {isMultiSelect && selected && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    const variant = valueToVariant[value]
+                    if (variant?.id && onVariantQuantityChange) {
+                      onVariantQuantityChange(variant.id, 0)
+                    }
+                  }}
+                  className="absolute top-1 right-1 z-10 w-5 h-5 flex items-center justify-center rounded-full bg-cosmos-charcoal/60 text-white text-xs hover:bg-cosmos-charcoal transition-colors"
+                  aria-label={`Deselect ${value}`}
+                  data-testid="variant-deselect"
+                >
+                  ×
+                </button>
+              )}
             </div>
           ) : (
             <button
-              onClick={() => updateOption(option.id, value)}
+              onClick={() => {
+                // Toggle: clicking the selected value deselects it
+                if (value === current) {
+                  updateOption(option.id, "")
+                } else {
+                  updateOption(option.id, value)
+                }
+              }}
               key={value}
               disabled={disabled}
               className={clx(

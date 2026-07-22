@@ -7,6 +7,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react"
 
@@ -21,6 +22,9 @@ type CartSheetContextValue = {
   quickAddProduct: HttpTypes.StoreProduct | null
   openQuickAdd: (product: HttpTypes.StoreProduct) => void
   closeQuickAdd: () => void
+  /** Synchronous ref-based guard -- set on mousedown to beat Headless UI's
+   *  document-level outside-click listener to the React state update. */
+  quickAddIntentRef: React.RefObject<boolean>
 }
 
 const CartSheetContext = createContext<CartSheetContextValue | null>(null)
@@ -46,6 +50,7 @@ export default function CartSheetProvider({
   >(null)
   const [quickAddProduct, setQuickAddProduct] =
     useState<HttpTypes.StoreProduct | null>(null)
+  const quickAddIntentRef = useRef(false)
 
   const openQuickAdd = useCallback(
     (product: HttpTypes.StoreProduct) => setQuickAddProduct(product),
@@ -70,7 +75,7 @@ export default function CartSheetProvider({
       const fresh = await retrieveCart(undefined, undefined, { noCache: true })
       setCart(fresh)
     } catch {
-      // cart fetch failed — keep current state
+      // cart fetch failed -- keep current state
     }
   }, [])
 
@@ -87,6 +92,7 @@ export default function CartSheetProvider({
         quickAddProduct,
         openQuickAdd,
         closeQuickAdd,
+        quickAddIntentRef,
       }}
     >
       {children}

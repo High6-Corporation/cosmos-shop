@@ -12,15 +12,20 @@ import { useRef, useState, useCallback, useEffect } from "react"
 type CartSheetItemProps = {
   item: HttpTypes.StoreCartLineItem
   currencyCode: string
+  /** When set, renders a grouped summary instead of individual controls */
+  groupQuantity?: number
+  groupItems?: HttpTypes.StoreCartLineItem[]
 }
 
 export default function CartSheetItem({
   item,
   currencyCode,
+  groupQuantity,
+  groupItems,
 }: CartSheetItemProps) {
   const [updating, setUpdating] = useState(false)
 
-  // Engraving state — text persists locally even when toggled off
+  // Engraving state -- text persists locally even when toggled off
   const [isEngraved, setIsEngraved] = useState(
     item.metadata?.engraved === true || item.metadata?.engraved === "true",
   )
@@ -69,7 +74,7 @@ export default function CartSheetItem({
     if (on) {
       // Show text field immediately (local state), but defer engraved: true
       // to the first typed text. This prevents charging the fee on a blank
-      // field — per §4.7, engraved (boolean) is the fee authority.
+      // field -- per §4.7, engraved (boolean) is the fee authority.
       // The debounced text update will set engraved: true when the user types.
       // For now, only make a server call if there's already saved text.
       if (engravedText.trim().length > 0) {
@@ -83,9 +88,9 @@ export default function CartSheetItem({
           },
         })
       }
-      // If no text yet, no server call — wait for the user to type
+      // If no text yet, no server call -- wait for the user to type
     } else {
-      // Toggle off — do NOT clear engraved_text so it survives close/reopen
+      // Toggle off -- do NOT clear engraved_text so it survives close/reopen
       await updateLineItem({
         lineId: item.id,
         quantity: item.quantity,
@@ -133,6 +138,56 @@ export default function CartSheetItem({
   const engravingFee = Number(item.variant?.metadata?.engraving_fee) || 0
   const engravingThreshold =
     Number(item.variant?.metadata?.engraving_threshold) || 0
+
+  // Grouped view -- compact summary when same engraving text spans variants
+  if (groupItems && groupItems.length > 1) {
+    const groupTotal = groupItems.reduce((sum, i) => sum + (i.total ?? 0), 0)
+    const groupTitle =
+      groupItems
+        .map(
+          (i) =>
+            `${i.product_title ?? i.title}${i.variant?.title ? " -- " + i.variant.title : ""}`,
+        )
+        .join(" | ") || "Grouped items"
+    const groupEngravedText = (item.metadata?.engraved_text as string) ?? ""
+
+    return (
+      <div
+        className="flex gap-x-3 py-3 border-b border-cosmos-hairline bg-cosmos-washi/50 rounded-md px-2"
+        data-testid="cart-sheet-grouped-item"
+      >
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-medium text-cosmos-charcoal truncate">
+            {groupTitle}
+          </p>
+          <p className="text-xs text-cosmos-graphite mt-0.5">
+            {groupQuantity} unit{groupQuantity !== 1 ? "s" : ""} &middot; &ldquo;
+            {groupEngravedText}&rdquo;
+          </p>
+          <div className="mt-2">
+            <EngravingFieldCaption
+              fee={engravingFee}
+              threshold={engravingThreshold}
+              currencyCode={currencyCode}
+            />
+          </div>
+        </div>
+        <div className="flex flex-col items-end justify-between flex-shrink-0">
+          <p className="text-sm font-semibold text-cosmos-charcoal tabular-nums">
+            {groupTotal
+              ? convertToLocale({
+                  amount: groupTotal,
+                  currency_code: currencyCode,
+                })
+              : ""}
+          </p>
+          <span className="text-xs text-cosmos-graphite">
+            {groupItems.length} variants
+          </span>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div
@@ -191,7 +246,7 @@ export default function CartSheetItem({
           />
         </div>
 
-        {/* Engraving toggle — only shown for engravable variants */}
+        {/* Engraving toggle -- only shown for engravable variants */}
         {isEngravable && (
           <div className="mt-2">
             <div className="flex items-center gap-x-2">
@@ -218,7 +273,7 @@ export default function CartSheetItem({
               </Button>
             </div>
 
-            {/* Text field + fee caption — shown when Yes is active */}
+            {/* Text field + fee caption -- shown when Yes is active */}
             {isEngraved && (
               <div className="mt-2">
                 <input

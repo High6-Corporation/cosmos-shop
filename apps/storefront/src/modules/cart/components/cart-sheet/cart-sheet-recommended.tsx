@@ -30,7 +30,7 @@ export default function CartSheetRecommended({
         cart.items?.map((item) => item.variant_id).filter(Boolean) ?? [],
       )
 
-      // Direct SDK fetch — NOT a server action (avoids router.refresh closing the sheet).
+      // Direct SDK fetch -- NOT a server action (avoids router.refresh closing the sheet).
       const data = await sdk.client.fetch<{
         products: HttpTypes.StoreProduct[]
         count: number
@@ -45,6 +45,12 @@ export default function CartSheetRecommended({
       })
 
       const recommended = (data.products ?? [])
+        .filter((p, i, arr) => {
+          // Deduplicate by title -- the API may return the same product under
+          // different ids and handles (e.g. "pilot-bls-g2-10-black" and
+          // "pilot-bls-g2-10-black-tb" share the same display title).
+          return arr.findIndex((x) => x.title === p.title) === i
+        })
         .filter((p) => !p.variants?.some((v) => cartVariantIds.has(v.id)))
         .slice(0, 4)
 
@@ -62,10 +68,6 @@ export default function CartSheetRecommended({
     fetchRecommended()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemCount, countryCode])
-
-  const handleQuickAdd = (product: HttpTypes.StoreProduct) => {
-    setModalProduct(product)
-  }
 
   if (products.length === 0) {
     if (showEmptyState) {
@@ -130,7 +132,7 @@ export default function CartSheetRecommended({
                   onClick={(e) => {
                     e.preventDefault()
                     e.stopPropagation()
-                    console.log("clicked + Add, NOT calling openQuickAdd")
+                    openQuickAdd(product)
                   }}
                   className="w-full mt-1 text-xs h-7 px-2 py-1 rounded-md border border-cosmos-hairline bg-cosmos-paper text-cosmos-charcoal hover:bg-cosmos-washi transition-colors cursor-pointer"
                   data-testid={`quick-add-${product.id}`}
@@ -141,8 +143,13 @@ export default function CartSheetRecommended({
             ))}
           </div>
         </div>
+        <LocalizedClientLink
+          href="/store"
+          className="block text-center text-xs text-cosmos-graphite hover:text-cosmos-ink mt-3 transition-colors"
+        >
+          See more
+        </LocalizedClientLink>
       </div>
-
     </>
   )
 }

@@ -11,10 +11,12 @@ import {
   getCacheTag,
   getCartId,
   removeCartId,
+  requireAuth,
   setCartId,
 } from "./cookies"
 import { getRegion } from "./regions"
 import { getLocale } from "./locale-actions"
+import { addCustomerAddress } from "./customer"
 
 /**
  * Retrieves a cart by its ID. If no ID is provided, it will use the cart ID from the cookies.
@@ -47,7 +49,6 @@ export async function retrieveCart(
       method: "GET",
       query: {
         fields,
-        ...(opts?.noCache ? { _t: Date.now() } : {}),
       },
       headers,
       next,
@@ -134,6 +135,8 @@ export async function addToCart({
     throw new Error("Missing variant ID when adding to cart")
   }
 
+  await requireAuth()
+
   const cart = await getOrSetCart(countryCode)
 
   if (!cart) {
@@ -178,6 +181,8 @@ export async function updateLineItem({
     throw new Error("Missing lineItem ID when updating line item")
   }
 
+  await requireAuth()
+
   const cartId = await getCartId()
 
   if (!cartId) {
@@ -209,6 +214,8 @@ export async function deleteLineItem(lineId: string) {
   if (!lineId) {
     throw new Error("Missing lineItem ID when deleting line item")
   }
+
+  await requireAuth()
 
   const cartId = await getCartId()
 
@@ -392,6 +399,30 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
         phone: formData.get("billing_address.phone"),
       }
     await updateCart(data)
+
+    // Persist the shipping address to the customer's account so it's
+    // available on future checkouts and in the account profile.
+    // addCustomerAddress expects unprefixed field names (first_name, not
+    // shipping_address.first_name), so we build a separate FormData.
+    try {
+      const addrFormData = new FormData()
+      const addr = data.shipping_address
+      if (addr) {
+        addrFormData.set("first_name", (addr.first_name as string) ?? "")
+        addrFormData.set("last_name", (addr.last_name as string) ?? "")
+        addrFormData.set("company", (addr.company as string) ?? "")
+        addrFormData.set("address_1", (addr.address_1 as string) ?? "")
+        addrFormData.set("address_2", (addr.address_2 as string) ?? "")
+        addrFormData.set("city", (addr.city as string) ?? "")
+        addrFormData.set("postal_code", (addr.postal_code as string) ?? "")
+        addrFormData.set("province", (addr.province as string) ?? "")
+        addrFormData.set("country_code", (addr.country_code as string) ?? "")
+        addrFormData.set("phone", (addr.phone as string) ?? "")
+        await addCustomerAddress({ isDefaultShipping: true }, addrFormData)
+      }
+    } catch {
+      // Silently ignore — the cart update succeeded and that's what matters
+    }
   } catch (e: any) {
     return e.message
   }
@@ -412,6 +443,8 @@ export async function placeOrder(cartId?: string) {
   if (!id) {
     throw new Error("No existing cart found when placing an order")
   }
+
+  await requireAuth()
 
   const headers = {
     ...(await getAuthHeaders()),

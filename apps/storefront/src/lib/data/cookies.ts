@@ -1,5 +1,28 @@
 import "server-only"
 import { cookies as nextCookies } from "next/headers"
+import { redirect } from "next/navigation"
+
+/**
+ * Guards server actions against unauthenticated access.
+ * Redirects to login if no JWT cookie is present.
+ */
+export const requireAuth = async (countryCode = "ph") => {
+  try {
+    const cookies = await nextCookies()
+    const token = cookies.get("_medusa_jwt")?.value
+
+    if (!token) {
+      throw new Error("UNAUTHENTICATED")
+    }
+
+    return token
+  } catch (e: unknown) {
+    if (e instanceof Error && e.message === "UNAUTHENTICATED") {
+      redirect(`/${countryCode}/account`)
+    }
+    throw e
+  }
+}
 
 export const getAuthHeaders = async (): Promise<
   { authorization: string } | Record<string, never>
@@ -34,7 +57,7 @@ export const getCacheTag = async (tag: string): Promise<string> => {
 }
 
 export const getCacheOptions = async (
-  tag: string
+  tag: string,
 ): Promise<{ tags: string[] } | Record<string, never>> => {
   if (typeof window !== "undefined") {
     return {}

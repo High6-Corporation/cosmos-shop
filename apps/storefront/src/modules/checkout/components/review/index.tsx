@@ -12,13 +12,24 @@ const Review = ({ cart }: { cart: HttpTypes.StoreCart }) => {
   const isOpen = searchParams.get("step") === "review"
 
   const paidByGiftcard = !!(
-    (cart as unknown as Record<string, unknown>)?.gift_cards && ((cart as unknown as Record<string, unknown>)?.gift_cards as unknown[])?.length > 0 && cart?.total === 0
+    (cart as unknown as Record<string, unknown>)?.gift_cards &&
+    ((cart as unknown as Record<string, unknown>)?.gift_cards as unknown[])
+      ?.length > 0 &&
+    cart?.total === 0
   )
 
+  const hasShippingAddress = !!cart.shipping_address
+  const hasShippingMethod = (cart.shipping_methods?.length ?? 0) > 0
+  const hasPayment = !!(cart.payment_collection || paidByGiftcard)
+
   const previousStepsCompleted =
-    cart.shipping_address &&
-    (cart.shipping_methods?.length ?? 0) > 0 &&
-    (cart.payment_collection || paidByGiftcard)
+    hasShippingAddress && hasShippingMethod && hasPayment
+
+  // Build a list of what's still missing so the user knows exactly what to fix
+  const missingSteps: string[] = []
+  if (!hasShippingAddress) missingSteps.push("Shipping Address")
+  if (!hasShippingMethod) missingSteps.push("Shipping Method")
+  if (!hasPayment) missingSteps.push("Payment")
 
   return (
     <div className="bg-cosmos-paper">
@@ -29,7 +40,7 @@ const Review = ({ cart }: { cart: HttpTypes.StoreCart }) => {
             "flex flex-row text-3xl-regular gap-x-2 items-baseline font-display tracking-tight",
             {
               "opacity-50 pointer-events-none select-none": !isOpen,
-            }
+            },
           )}
         >
           Review
@@ -49,6 +60,20 @@ const Review = ({ cart }: { cart: HttpTypes.StoreCart }) => {
           </div>
           <PaymentButton cart={cart} data-testid="submit-order-button" />
         </>
+      )}
+      {isOpen && !previousStepsCompleted && (
+        <div className="rounded-lg border-2 border-cosmos-vermilion/30 bg-cosmos-vermilion/5 p-4">
+          <p className="text-sm font-semibold text-cosmos-vermilion-text mb-2">
+            Complete the following to place your order:
+          </p>
+          <ul className="list-disc list-inside space-y-1">
+            {missingSteps.map((step) => (
+              <li key={step} className="text-sm text-cosmos-charcoal">
+                {step}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   )

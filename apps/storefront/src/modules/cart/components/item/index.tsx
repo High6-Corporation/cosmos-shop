@@ -94,6 +94,11 @@ const Item = ({ item, type = "full", currencyCode }: ItemProps) => {
           {item.product_title}
         </Text>
         <LineItemOptions variant={item.variant} data-testid="product-variant" />
+        {isEngraved && (
+          <p className="text-xs text-cosmos-graphite mt-0.5">
+            ✎ {engravedText || "Engraved"}
+          </p>
+        )}
         {type === "full" && isEngraved && (
           <div className="mt-2">
             <label className="block text-xs font-medium text-ui-fg-muted mb-1">
